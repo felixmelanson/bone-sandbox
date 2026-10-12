@@ -560,7 +560,20 @@ function Ticks({ by, opacity }: { by: "bvtv" | "tbth"; opacity: number }) {
   );
 }
 
-function Legend({ mix, colorBy, setColorBy }: { mix: number; colorBy: "bvtv" | "tbth"; setColorBy: (v: "bvtv" | "tbth") => void }) {
+function Legend({
+  mix,
+  colorBy,
+  setColorBy,
+  aged,
+  setAged,
+}: {
+  mix: number;
+  colorBy: "bvtv" | "tbth";
+  setColorBy: (v: "bvtv" | "tbth") => void;
+  /** when given, an "Age matched" checkbox under the colour buttons lines the rows up by bone age */
+  aged?: boolean;
+  setAged?: (v: boolean) => void;
+}) {
   return (
     <div className="space-y-4 text-[12px] text-[#1C1C1E]">
       <div>
@@ -593,11 +606,17 @@ function Legend({ mix, colorBy, setColorBy }: { mix: number; colorBy: "bvtv" | "
                 role="radio"
                 aria-checked={colorBy === v}
                 onClick={() => setColorBy(v)}
-                className={`rounded-full border px-2.5 py-1 text-[11.5px] transition-colors ${colorBy === v ? "border-stone-900 bg-stone-900 text-white" : "border-stone-300 text-stone-600 hover:bg-stone-100"}`}
+                className={`rounded-md border px-2.5 py-1 text-[11.5px] transition-colors ${colorBy === v ? "border-stone-900 bg-stone-900 text-white" : "border-stone-300 text-stone-600 hover:bg-stone-100"}`}
               >
                 {v === "bvtv" ? "BV/TV" : "Tb.Th µm"}
               </button>
             ))}
+            {setAged && (
+              <label className="mt-2 flex cursor-pointer select-none items-center gap-2 text-[12px] text-[#1C1C1E]">
+                <input type="checkbox" checked={!!aged} onChange={(e) => setAged(e.target.checked)} className="h-4 w-4 cursor-pointer accent-[#1C1C1E]" />
+                Age matched
+              </label>
+            )}
           </div>
         </div>
       </div>
@@ -761,6 +780,92 @@ export function FactorialSection() {
           isolate it in the grid.
         </figcaption>
       </figure>
+    </section>
+  );
+}
+
+/* --------------------------- paper version ---------------------------- */
+
+/**
+ * The same ellipsoid grid for the paper page: title, the two paragraphs, strata, grid and legend only.
+ * Colour is chosen in the legend; "Age matched" lines the unloaded rows up with ambulatory bone of the
+ * same age (bone age) instead of the same depth.
+ */
+export function FactorialPaper({ num = "3.1" }: { num?: string }) {
+  const [colorBy, setColorBy] = useState<"bvtv" | "tbth">("bvtv");
+  const [aged, setAged] = useState(false);
+  const [mix, setMix] = useState(0);
+  const [rowHover, setRowHover] = useState<number | null>(null);
+  const live = useRef<Live>({ mix: 0, spot: 0, age: Array(NCOL).fill(0), col: null, colDim: Array(NCOL).fill(1) });
+
+  useEffect(() => {
+    const L = live.current;
+    const c = [
+      tween(L.mix, colorBy === "tbth" ? 1 : 0, 700, (v) => {
+        L.mix = v;
+        setMix(v);
+      }),
+      ...Array.from({ length: NCOL }, (_, k) => tween(L.age[k], aged ? 1 : 0, 900, (v) => (L.age[k] = v), { delay: k * 60 })),
+    ];
+    return () => c.forEach((f) => f());
+  }, [colorBy, aged]);
+
+  return (
+    <section id="p2-far" aria-labelledby="p2-far-t" className="og-row fac-row">
+      <header className="og-head">
+        <h3 id="p2-far-t" className="og-h">
+          <span className="secnum">{num}</span>
+          Density makes unloading look like ageing
+        </h3>
+        <p className="og-abbr">Strut order about the depth axis, P₂far, by condition and depth</p>
+      </header>
+      <div className="prose two-col">
+        <p>
+          Every ellipsoid summarises thousands of trabecular struts in one 500 µm layer of bone, measured from the growth plate down. A sphere means the
+          struts point every which way. The taller it gets, the more the struts run along the depth axis, away from the plate. Colour is how much bone
+          is there, or how thick it is.
+        </p>
+        <p>
+          Ambulatory rats start almost random just under the plate and organise with depth. Unloaded rats are the reverse: the layers nearest the plate
+          are the most aligned, and the most depleted. Their struts aren't growing in a new direction; the ones that ran across were removed, and the ones
+          running along depth survived. Conventional fabric anisotropy (DA), the standard measure, barely registers the change.
+        </p>
+      </div>
+
+      <div className="mx-auto mt-8 grid max-w-[1000px] grid-cols-[130px_minmax(0,1fr)] gap-x-3 xl:grid-cols-[130px_minmax(0,1fr)_170px]">
+        <div />
+        <div className="grid grid-cols-6 pb-1 text-center">
+          {STRATA.map(([a, b], s) => (
+            <div key={s}>
+              <p className="text-[15px] italic text-[#1C1C1E]">S{sub(s + 1)}</p>
+              <p className="num text-[11px] text-[#76797E]">
+                {a.toFixed(1)}-{b.toFixed(1)} mm
+              </p>
+            </div>
+          ))}
+        </div>
+        <div className="hidden xl:block" />
+
+        <div className="relative">
+          <div className="absolute inset-x-0 top-0 grid" style={{ height: `${(GRID_H / VIEW_H) * 100}%`, gridTemplateRows: `repeat(${NROW}, 1fr)` }}>
+            {GROUPS.map((g, r) => (
+              <div
+                key={r}
+                onPointerEnter={() => setRowHover(r)}
+                onPointerLeave={() => setRowHover(null)}
+                className={`flex cursor-default flex-col justify-center border-t border-[#E8E8E8] first:border-t-0 transition-opacity ${rowHover !== null && rowHover !== r ? "opacity-30" : ""}`}
+              >
+                <p className="text-[14px] font-bold leading-tight text-[#1C1C1E]">{g.loading === "AMB" ? "Ambulatory" : "Unloaded"}</p>
+                <p className="text-[12px] text-[#76797E]">{g.diet === "HP" ? "high phosphate" : "normal phosphate"}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <GridView live={live} dimRow={rowHover} />
+        <div className="col-span-2 mt-4 xl:col-span-1 xl:mt-0">
+          <Legend mix={mix} colorBy={colorBy} setColorBy={setColorBy} aged={aged} setAged={setAged} />
+        </div>
+      </div>
     </section>
   );
 }

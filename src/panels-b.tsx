@@ -150,6 +150,9 @@ function fabSpec(q: QField, sorted: Float32Array, bv: number): FabSpec {
   return { q, d, beta, bone, local: local!, G, da: 1 - e.values[2] / e.values[0] };
 }
 
+/** Same camera direction and framing as the other specimen views. */
+const DA_VIEW: V3 = [1.2, 0.95, 1.4];
+
 const texRot = (psi: number) => {
   const c = Math.cos(rad(psi));
   const s = Math.sin(rad(psi));
@@ -161,7 +164,7 @@ const texRot = (psi: number) => {
  * its smallest eigenvalue), traced through bone from random seeds and fitted with a straight segment. The
  * longest well separated segments are kept. `M` maps world to texture coordinates, as in the shader.
  */
-function strutLines(S: FabSpec, M: THREE.Matrix3, n = 8): [V3, V3][] {
+function strutLines(S: FabSpec, M: THREE.Matrix3, n = 8, view: V3 = DA_VIEW): [V3, V3][] {
   const { d, bone, local } = S;
   const Mt = M.clone().transpose();
   const t = new THREE.Vector3();
@@ -172,11 +175,16 @@ function strutLines(S: FabSpec, M: THREE.Matrix3, n = 8): [V3, V3][] {
   const dirAt = (p: THREE.Vector3) => new THREE.Vector3(...eigSym3(tensorAt(local, vox(p))).vectors[2]).applyMatrix3(Mt).normalize();
   const inside = (p: THREE.Vector3) => Math.abs(p.x) < 0.47 && Math.abs(p.y) < 0.47 && Math.abs(p.z) < 0.49;
   const rnd = mulberry32(17);
+  const U = new THREE.Vector3(...view).normalize();
+  // screen axes for the overlap test: two directions perpendicular to the view
+  const E1 = new THREE.Vector3(0, 1, 0).cross(U).normalize();
+  const E2 = U.clone().cross(E1);
   const h = 0.012;
   const tracks: { pts: THREE.Vector3[]; len: number }[] = [];
   for (let s = 0; s < 400; s++) {
-    const p0 = new THREE.Vector3(-0.44 + rnd() * 0.88, -0.44 + rnd() * 0.88, 0.3 + rnd() * 0.17);
-    if (!bone[vox(p0)]) continue;
+    // seeds in the shell of the cube facing the camera, so the traced struts are the visible ones
+    const p0 = new THREE.Vector3(-0.44 + rnd() * 0.88, -0.44 + rnd() * 0.88, -0.44 + rnd() * 0.88);
+    if (p0.dot(U) < 0.15 || !bone[vox(p0)]) continue;
     const half = (sign: number) => {
       const out: THREE.Vector3[] = [];
       const p = p0.clone();
@@ -194,7 +202,7 @@ function strutLines(S: FabSpec, M: THREE.Matrix3, n = 8): [V3, V3][] {
     };
     const pts = [...half(-1).reverse(), p0, ...half(1)];
     const len = (pts.length - 1) * h;
-    if (len > 0.15) tracks.push({ pts, len });
+    if (len > 0.12) tracks.push({ pts, len });
   }
   tracks.sort((a, b) => b.len - a.len);
   const lines: [V3, V3][] = [];
@@ -212,7 +220,13 @@ function strutLines(S: FabSpec, M: THREE.Matrix3, n = 8): [V3, V3][] {
     const A = c.clone().addScaledVector(ax, lo);
     const B = c.clone().addScaledVector(ax, hi);
     // as seen from the front: keep only segments that stay clear of those already taken
-    if (lines.some(([P, Q]) => segDist2(A.x, A.y, B.x, B.y, P[0], P[1], Q[0], Q[1]) < 0.075)) continue;
+    const pr = (v: THREE.Vector3 | V3) => {
+      const w = Array.isArray(v) ? new THREE.Vector3(...v) : v;
+      return [w.dot(E1), w.dot(E2)] as const;
+    };
+    const [a1, a2] = pr(A);
+    const [b1, b2] = pr(B);
+    if (lines.some(([P, Q]) => segDist2(a1, a2, b1, b2, ...pr(P), ...pr(Q)) < 0.075)) continue;
     lines.push([
       [A.x, A.y, A.z],
       [B.x, B.y, B.z],
@@ -256,10 +270,10 @@ function drawStruts(ctx: CanvasRenderingContext2D, cam: THREE.Camera, w: number,
 }
 
 /** Fixed frontal view of one specimen with its strut axes dashed on top. */
-function FabricView({ spec, psi, label }: { spec: FabSpec | null; psi: number; label: ReactNode }) {
+function FabricView({ spec, psi }: { spec: FabSpec | null; psi: number }) {
   const lines = useRef<[V3, V3][]>([]);
   const [vs] = useState(() => {
-    const v = new VolumeScene([64, 64, 64], { view: [0.03, 0.06, 1], fov: 24, dist: 3.05 });
+    const v = new VolumeScene([64, 64, 64], { view: DA_VIEW, dist: 3.6 });
     (v as Viewable).overlay = (ctx, cam, w, h) => drawStruts(ctx, cam, w, h, lines.current);
     return v;
   });
@@ -276,11 +290,8 @@ function FabricView({ spec, psi, label }: { spec: FabSpec | null; psi: number; l
     vs.onChange();
   }, [vs, spec, psi]);
   return (
-    <div>
-      <div className="fig aspect-square">
-        <Viewer view={spec ? vs : null} interactive={false} alt="Frontal view of the specimen with dashed lines along the struts" />
-      </div>
-      <p className="fig-l">{label}</p>
+    <div className="fig aspect-square">
+      <Viewer view={spec ? vs : null} interactive={false} hint={false} alt="Specimen with dashed lines along the struts" />
     </div>
   );
 }
@@ -319,31 +330,29 @@ export function DAPanel({ className, num = "3.5", fig = 5 }: { className?: strin
   }, [fabric]);
 
   return (
-    <Panel wide id="da" num={num} fig={fig} className={className}>
-      <div ref={ref} className="fig-trio">
-        <FabricView spec={spec} psi={psi} label={<>Structure tensor · DA {spec ? spec.da.toFixed(2) : "…"}</>} />
-        <div>{fabric && milR ? <MilPanel compact f={fabric} rose={milR} /> : <Placeholder />}</div>
-        <div>{fabric && svdR ? <SvdPanel compact f={fabric} a={svdR.a} b={svdR.b} /> : <Placeholder />}</div>
-      </div>
-      <Controls>
-        <Seg
-          label="Organisation"
-          value={k === 1 ? "iso" : k === 3.2 ? "aniso" : "custom"}
-          onChange={(v) => v !== "custom" && setK(v === "iso" ? 1 : 3.2)}
-          options={[
-            { v: "iso", t: "Isotropic" },
-            { v: "aniso", t: "Anisotropic" },
-            { v: "custom", t: "Custom" },
-          ]}
-        />
-        <Slider label="Fabric alignment" hint="stretch along the principal axis" value={k} min={1} max={4} step={0.1} onChange={setK} format={(v) => `${v.toFixed(1)} : 1`} />
-        <Slider label="Alignment direction" value={psi} min={0} max={180} step={1} onChange={setPsi} format={(v) => `${v.toFixed(0)}°`} />
+    <Panel
+      wide
+      id="da"
+      num={num}
+      fig={fig}
+      className={className}
+      aside={
         <Readouts>
           <Readout label="DA" value={spec ? fmt(spec.da, 3) : "-"} accent />
           <Readout label="MIL 1 − min/max" value={milR ? roseDA(milR).toFixed(2) : "-"} />
           <Readout label="SVD 1 − min/max" value={svdR ? roseDA(svdR.a).toFixed(2) : "-"} />
           <Readout label="Tensor 1 − min/max" value={fabric ? roseDA(fabric.gst).toFixed(2) : "-"} />
         </Readouts>
+      }
+    >
+      <div ref={ref} className="fig-trio">
+        <FabricView spec={spec} psi={psi} />
+        <div>{fabric && milR ? <MilPanel compact f={fabric} rose={milR} /> : <Placeholder />}</div>
+        <div>{fabric && svdR ? <SvdPanel compact f={fabric} a={svdR.a} b={svdR.b} /> : <Placeholder />}</div>
+      </div>
+      <Controls>
+        <Slider label="Fabric alignment" hint="stretch along the principal axis" value={k} min={1} max={4} step={0.1} onChange={setK} format={(v) => `${v.toFixed(1)} : 1`} />
+        <Slider label="Alignment direction" value={psi} min={0} max={180} step={1} onChange={setPsi} format={(v) => `${v.toFixed(0)}°`} />
       </Controls>
     </Panel>
   );
@@ -815,7 +824,23 @@ export function EFPanel({ className, num = "3.6", fig = 6 }: { className?: strin
   const major = sph(A.eig.vectors[2]);
 
   return (
-    <Panel id="ef" num={num} fig={fig} className={className}>
+    <Panel
+      wide
+      id="ef"
+      num={num}
+      fig={fig}
+      className={className}
+      aside={
+        mode === "field" && (
+          <Readouts>
+            <Readout label="Order S" value={fs ? fs.S.toFixed(3) : "-"} accent />
+            <Readout label="Director θ, φ" value={Nd ? `${Nd.t.toFixed(0)}°, ${Nd.p.toFixed(0)}°` : "-"} />
+            <Readout label="⟨EF⟩" value={fs ? fs.ef.toFixed(3) : "-"} />
+            <Readout label="Plates / rods" value={fs ? `${(fs.plates * 100).toFixed(0)} / ${(fs.rods * 100).toFixed(0)}` : "-"} unit="%" />
+          </Readouts>
+        )
+      }
+    >
       <div ref={ref} />
       <div className={`mx-auto grid grid-cols-1 gap-2 ${mode === "single" ? "max-w-[480px]" : ""}`}>
         {mode === "single" ? (
@@ -823,18 +848,18 @@ export function EFPanel({ className, num = "3.6", fig = 6 }: { className?: strin
             <Viewer view={single} alt="Ellipsoid with principal axes, section AA and angle construction" />
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <p className="mb-1 text-center text-[12px] text-stone-500">Bone</p>
-              <div className="fig aspect-square">
-                <Viewer view={field?.bone ?? null} alt="Solid trabecular bone specimen" />
-              </div>
+          <div className="ef-row">
+            {/* glyph colour = alignment with the director N̂ */}
+            <div className="ef-bar" aria-label="Glyph colour: alignment with the director N̂">
+              <span>along N̂</span>
+              <i style={{ background: METAL_CSS.replace("to right", "to top") }} />
+              <span>across N̂</span>
             </div>
-            <div>
-              <p className="mb-1 text-center text-[12px] text-stone-500">Fabric field and order tensor Q</p>
-              <div className="fig aspect-square">
-                <Viewer view={field} alt="Transparent specimen with metallic fabric ellipsoids, director axis, Q eigenframe and order cone" />
-              </div>
+            <div className="fig aspect-square">
+              <Viewer view={field?.bone ?? null} hint={false} alt="Solid trabecular bone specimen" />
+            </div>
+            <div className="fig aspect-square">
+              <Viewer view={field} hint={false} alt="Transparent specimen with fabric ellipsoids, director axis, Q eigenframe and order cone" />
             </div>
           </div>
         )}
@@ -844,13 +869,7 @@ export function EFPanel({ className, num = "3.6", fig = 6 }: { className?: strin
             <span className="h-2 flex-1 rounded-full" style={{ background: cssRamp(EF_RAMP).replace("to top", "to right") }} />
             <span className="whitespace-nowrap">+1 prolate · rod</span>
           </div>
-        ) : (
-          <div className="flex items-center gap-2 text-[11px] text-stone-600">
-            <span className="whitespace-nowrap">bronze · ⊥ N</span>
-            <span className="h-2 flex-1 rounded-full" style={{ background: METAL_CSS }} />
-            <span className="whitespace-nowrap">gold · ∥ N</span>
-          </div>
-        )}
+        ) : null}
       </div>
 
       {mode === "single" ? (
@@ -886,12 +905,6 @@ export function EFPanel({ className, num = "3.6", fig = 6 }: { className?: strin
       ) : (
         <Controls>
           <Slider label="Trabecular alignment" hint="isotropic → nematic" value={k} min={1} max={4} step={0.1} onChange={setK} format={(v) => `${v.toFixed(1)} : 1`} />
-          <Readouts>
-            <Readout label="Order S" value={fs ? fs.S.toFixed(3) : "-"} accent />
-            <Readout label="Director θ, φ" value={Nd ? `${Nd.t.toFixed(0)}°, ${Nd.p.toFixed(0)}°` : "-"} />
-            <Readout label="⟨EF⟩" value={fs ? fs.ef.toFixed(3) : "-"} />
-            <Readout label="Plates / rods" value={fs ? `${(fs.plates * 100).toFixed(0)} / ${(fs.rods * 100).toFixed(0)}` : "-"} unit="%" />
-          </Readouts>
         </Controls>
       )}
     </Panel>

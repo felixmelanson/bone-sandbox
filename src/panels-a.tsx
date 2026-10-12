@@ -27,6 +27,7 @@ import {
   Readout,
   Readouts,
   schedule,
+  SquareBtn,
   SliceCanvas,
   Slider,
   Toggle,
@@ -39,7 +40,7 @@ import {
 const R = 220;
 const D64: Dims = [64, 64, 64];
 /** camera distance for the figure views: close enough that the cube fills its square */
-const VIEW_DIST = 3.35;
+const VIEW_DIST = 3.6;
 const vol = (d: Dims) => d[0] * d[1] * d[2] * VOX_MM ** 3;
 const pct = (v: number) => `${(v * 100).toFixed(1)} %`;
 
@@ -76,8 +77,6 @@ export function BVPanel({ className, num = "3.1", fig = 1 }: { className?: strin
     setPxC(renderCoronal(L.q, L.d, beta, (L.d[2] - 1) / 2, R, shadeBinary));
   }, [f, beta]);
 
-  const real = L ? bvForBeta(L.sorted, beta) : bv;
-  const TV = L ? vol(L.d) : 0;
 
   return (
     <Panel wide id="bv-tv" num={num} fig={fig} className={className}>
@@ -105,12 +104,6 @@ export function BVPanel({ className, num = "3.1", fig = 1 }: { className?: strin
             Cut specimen at analysis plane
           </Toggle>
         </div>
-        <Readouts>
-          <Readout label="BV/TV" value={(real * 100).toFixed(1)} unit="%" accent />
-          <Readout label="BV" value={fmt(real * TV, 1)} unit="mm³" />
-          <Readout label="TV" value={fmt(TV, 1)} unit="mm³" />
-          <Readout label="Voxel" value={(VOX_MM * 1000).toFixed(0)} unit="µm" />
-        </Readouts>
       </Controls>
     </Panel>
   );
@@ -154,7 +147,20 @@ export function ConnPanel({ className, num = "3.2", fig = 2 }: { className?: str
   );
 
   return (
-    <Panel wide id="conn-d" num={num} fig={fig} className={className}>
+    <Panel
+      wide
+      id="conn-d"
+      num={num}
+      fig={fig}
+      className={className}
+      aside={
+        <Readouts>
+          <Readout label="Conn.D" value={m ? fmt(m.cd, 2) : "-"} unit="mm⁻³" accent />
+          <Readout label="χ, purified" value={m ? String(m.chi).replace("-", "−") : "-"} />
+          <Readout label="Conn β₁" value={m ? String(m.conn) : "-"} />
+        </Readouts>
+      }
+    >
       <div ref={ref} className="fig-trio">
         <div className="fig aspect-square">
           <Viewer view={vs} hint={false} alt="Trabecular network whose connectivity changes with the controls" />
@@ -175,12 +181,6 @@ export function ConnPanel({ className, num = "3.2", fig = 2 }: { className?: str
       <Controls>
         <Slider label="Plate perforation" hint="plates → rods" value={a} min={0} max={2.4} step={0.05} onChange={setA} format={(v) => v.toFixed(2)} />
         <Slider label="Bone volume fraction" value={bv} min={0.06} max={0.45} step={0.01} onChange={setBv} format={pct} />
-        <Readouts>
-          <Readout label="Conn.D" value={m ? fmt(m.cd, 2) : "-"} unit="mm⁻³" accent />
-          <Readout label="χ, purified" value={m ? String(m.chi).replace("-", "−") : "-"} />
-          <Readout label="Conn β₁" value={m ? String(m.conn) : "-"} />
-          <Readout label="BV/TV" value={m ? (m.bv * 100).toFixed(1) : "-"} unit="%" />
-        </Readouts>
       </Controls>
     </Panel>
   );
@@ -209,7 +209,7 @@ export function ThicknessPanel({ kind, className, num, fig }: { kind: Kind; clas
   const [sch, setSch] = useState<ThicknessSchematic | SeparationSchematic | null>(null);
   const [bv, setBv] = useSpecBV();
   const [sweep, setSweep] = useState<number | null>(null);
-  // colour bar matches the height of the section frame beside it
+  // colour bar matches the height of the specimen view beside it
   const sliceBox = useRef<HTMLDivElement>(null);
   const [barH, setBarH] = useState(0);
   const barBox = useRef<HTMLDivElement>(null);
@@ -314,9 +314,16 @@ export function ThicknessPanel({ kind, className, num, fig }: { kind: Kind; clas
     const metric = kind === "th" ? "Tb.Th" : "Tb.Sp";
 
   return (
-    <Panel wide id={kind === "th" ? "tb-th" : "tb-sp"} num={num ?? (kind === "th" ? "3.3" : "3.4")} fig={fig ?? (kind === "th" ? 3 : 4)} className={className}>
+    <Panel
+      wide
+      id={kind === "th" ? "tb-th" : "tb-sp"}
+      num={num ?? (kind === "th" ? "3.3" : "3.4")}
+      fig={fig ?? (kind === "th" ? 3 : 4)}
+      className={className}
+      aside={<SquareBtn onClick={play}>↻ Replay colour sweep</SquareBtn>}
+    >
       {/* one horizontal row: colour bar, specimen, section, sphere-fitting schematic */}
-      <div ref={ref} className="fig-row grid gap-x-4">
+      <div ref={ref} className="fig-row grid">
         <div ref={barBox} style={{ height: barH || 200 }}>
           <ColorBar
             stops={C.stops}
@@ -333,11 +340,11 @@ export function ThicknessPanel({ kind, className, num, fig }: { kind: Kind; clas
             }
           />
         </div>
-        <div className="fig relative aspect-square">
+        <div ref={sliceBox} className="fig relative aspect-square">
           <Viewer view={vs} interactive={false} alt={`Volume coloured by local ${kind === "th" ? "thickness" : "separation"}`} />
           {busy && <span className="absolute left-1 top-1 rounded-full bg-white/85 px-2 py-0.5 text-[10px] text-stone-500">fitting spheres…</span>}
         </div>
-        <div ref={sliceBox}>
+        <div>
           <Frame>
             <SliceCanvas pixels={px} R={R} alt={`Section at the analysis plane coloured by local ${kind === "th" ? "thickness" : "separation"}`} />
           </Frame>
@@ -365,12 +372,6 @@ export function ThicknessPanel({ kind, className, num, fig }: { kind: Kind; clas
           onChange={setBv}
           format={pct}
         />
-        <div className="flex flex-wrap items-center justify-between gap-2 text-[12px] text-stone-500">
-          <button type="button" onClick={play} className="rounded-full border border-stone-300 px-3 py-1 text-[12px] text-stone-700 hover:bg-stone-100">
-            ▶ Sweep the colour scale
-          </button>
-          <span>{sweep === null ? "All values shown" : `Highlighting ${fmt(Math.max(0, sweep - C.band), 2)} to ${fmt(sweep + C.band, 2)} mm`}</span>
-        </div>
         <Readouts>
           <Readout label={`${metric} mean`} value={st ? fmt(st.mean, 3) : "-"} unit="mm" accent />
           <Readout label="SD" value={st ? fmt(st.sd, 3) : "-"} unit="mm" />

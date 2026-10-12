@@ -69,13 +69,17 @@ export function useFrame(fn: () => void, deps: unknown[]) {
 
 /* ------------------------------- layout ----------------------------- */
 
-/** One paper row: heading, then the figure (floated right on wide screens) with the text wrapping around and below it. No caption: the text carries it. */
+/**
+ * One paper row. The figure comes first and floats right, so its top is level with the section title;
+ * the heading, text and any `aside` (readouts, a replay button) wrap down the left and below it.
+ */
 export function Panel({
   id,
   num,
   fig,
   className = "",
   wide = false,
+  aside,
   children,
 }: {
   id: string;
@@ -84,11 +88,16 @@ export function Panel({
   className?: string;
   /** rows with three or four views give the figure more of the width */
   wide?: boolean;
+  /** shown in the text column, under the text */
+  aside?: ReactNode;
   children: ReactNode;
 }) {
   const t = METRICS[id];
   return (
     <section id={id} aria-labelledby={`${id}-t`} className={`og-row ${wide ? "wide" : ""} ${className}`}>
+      <figure className="og-fig" aria-label={`Figure ${fig}`}>
+        {children}
+      </figure>
       <header className="og-head">
         <h3 id={`${id}-t`} className="og-h">
           <span className="secnum">{num}</span>
@@ -96,11 +105,18 @@ export function Panel({
         </h3>
         <p className="og-abbr">{t.abbr}</p>
       </header>
-      <figure className="og-fig" aria-label={`Figure ${fig}`}>
-        {children}
-      </figure>
       <div className="og-text prose">{t.short ?? t.body}</div>
+      {aside && <div className="og-aside">{aside}</div>}
     </section>
+  );
+}
+
+/** Square, softly rounded text-column button (replay and similar). */
+export function SquareBtn({ onClick, children }: { onClick: () => void; children: ReactNode }) {
+  return (
+    <button type="button" onClick={onClick} className="sq-btn">
+      {children}
+    </button>
   );
 }
 

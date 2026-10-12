@@ -14,6 +14,7 @@ import { Viewer } from "./bone/views";
 import type { Dims } from "./bone/volume";
 import { BVPanel, ConnPanel, ThicknessPanel } from "./panels-a";
 import { DAPanel, EFPanel } from "./panels-b";
+import { FactorialPaper } from "./factorial";
 import { DEFAULT_SPECIMEN, getModel, SEED, SpecimenCtx, type SpecimenChoice } from "./specimen";
 import { REFERENCES } from "./text";
 import { Controls, Readout, Readouts, schedule, Slider, useDebounced, useInView } from "./ui";
@@ -25,11 +26,11 @@ const shade: Shade = (c) => [mix(MARROW[0], BONE[0], c), mix(MARROW[1], BONE[1],
 
 /** Models on this page, in bracing order, named for the group each stands in for. */
 const LIBRARY: { id: ModelId; name: string }[] = [
-  { id: "tworod", name: "Two-surface rods" },
+  { id: "tworod", name: "Test 1" },
   { id: "hybrid", name: "AMB" },
   { id: "braced", name: "HLU-NP" },
   { id: "columns", name: "HLU-HP" },
-  { id: "rungs", name: "Over-braced control" },
+  { id: "rungs", name: "Test 2" },
   { id: "graph", name: "Isotropic null" },
   { id: "mixed", name: "Plate fraction" },
 ];
@@ -88,12 +89,6 @@ function ModelsRow({ spec, setSpec }: { spec: SpecimenChoice; setSpec: (s: Speci
 
   return (
     <section id="models" className="og-row wide">
-      <header className="og-head">
-        <h3 className="og-h">
-          <span className="secnum">1.1</span>Synthetic specimens
-        </h3>
-        <p className="og-abbr">64³ voxels · 65 µm · 4.16 mm cube</p>
-      </header>
       <figure className="og-fig">
         <div ref={ref} className="models">
           <div className="fig aspect-square models-view">
@@ -119,7 +114,8 @@ function ModelsRow({ spec, setSpec }: { spec: SpecimenChoice; setSpec: (s: Speci
             })}
           </div>
         </div>
-        <Controls>
+        {(model === "braced" || links) && (
+          <Controls>
           {model === "braced" && (
             <Slider label="Rung retention" hint="transverse links kept" value={rung} min={0} max={1} step={0.05} onChange={(v) => setSpec({ ...spec, rung: v })} format={(v) => `${Math.round(v * 100)} %`} />
           )}
@@ -131,8 +127,15 @@ function ModelsRow({ spec, setSpec }: { spec: SpecimenChoice; setSpec: (s: Speci
               <Readout label="Transverse volume" value={volT !== null ? (volT * 100).toFixed(0) : "-"} unit="%" accent />
             </Readouts>
           )}
-        </Controls>
+          </Controls>
+        )}
       </figure>
+      <header className="og-head">
+        <h3 className="og-h">
+          <span className="secnum">1.1</span>Synthetic specimens
+        </h3>
+        <p className="og-abbr">64³ voxels · 65 µm · 4.16 mm cube</p>
+      </header>
       <div className="og-text prose">
         <p>
           Every specimen is a procedural field thresholded into bone, with no imaging noise. The strut models join jittered nodes about 1.1 mm apart
@@ -173,6 +176,13 @@ export function Explore() {
           <EFPanel num="2.6" fig={7} />
         </section>
       </SpecimenCtx.Provider>
+
+      <section className="psec">
+        <h2>
+          <span className="secnum">3</span>New metrics
+        </h2>
+        <FactorialPaper num="3.1" />
+      </section>
 
       <section className="psec refs-sec">
         <h2>References</h2>
