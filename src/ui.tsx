@@ -70,44 +70,102 @@ export function useFrame(fn: () => void, deps: unknown[]) {
 /* ------------------------------- layout ----------------------------- */
 
 /**
- * One paper row. The figure comes first and floats right, so its top is level with the section title;
- * the heading, text and any `aside` (readouts, a replay button) wrap down the left and below it.
+ * One metric in the sandbox workspace. Returns three regions that the workspace grid places:
+ * the viewport (3-D view, with optional overlays such as a colour bar), the inspector (2-D
+ * sections, readouts, definition) and the parameter panel (sliders, toggles, actions).
  */
 export function Panel({
   id,
-  num,
-  fig,
-  className = "",
-  wide = false,
-  aside,
-  children,
+  view,
+  overlay,
+  side,
+  readouts,
+  controls,
+  cut,
+  hint = "Drag to rotate",
 }: {
   id: string;
   num?: string;
-  fig: number;
+  fig?: number;
   className?: string;
-  /** rows with three or four views give the figure more of the width */
   wide?: boolean;
-  /** shown in the text column, under the text */
-  aside?: ReactNode;
-  children: ReactNode;
+  /** the 3-D specimen */
+  view: ReactNode;
+  /** drawn over the viewport (colour bar, legend) */
+  overlay?: ReactNode;
+  /** 2-D sections and secondary views, shown in the inspector */
+  side?: ReactNode;
+  readouts?: ReactNode;
+  controls?: ReactNode;
+  hint?: string | null;
+  /** volume scenes in this metric's views; each gets the shared "Cut plane" toggle */
+  cut?: (Cuttable | null | undefined)[];
 }) {
   const t = METRICS[id];
+  const [cutOn, setCutOn] = useState(false);
+  useEffect(() => {
+    for (const v of cut ?? []) v?.set({ uCutOn: cutOn ? 1 : 0, uCut: 0 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cutOn, ...(cut ?? [])]);
   return (
-    <section id={id} aria-labelledby={`${id}-t`} className={`og-row ${wide ? "wide" : ""} ${className}`}>
-      <figure className="og-fig" aria-label={`Figure ${fig}`}>
-        {children}
-      </figure>
-      <header className="og-head">
-        <h3 id={`${id}-t`} className="og-h">
-          <span className="secnum">{num}</span>
-          {t.title}
-        </h3>
-        <p className="og-abbr">{t.abbr}</p>
-      </header>
-      <div className="og-text prose">{t.short ?? t.body}</div>
-      {aside && <div className="og-aside">{aside}</div>}
-    </section>
+    <>
+      <h2 id={`${id}-t`} className="ws-title">
+        {t.title} <span>({t.abbr})</span>
+      </h2>
+      <section className="ws-view" aria-labelledby={`${id}-t`}>
+        <header className="ws-view-head">
+          <h2>3D Model</h2>
+        </header>
+        <div className="ws-canvas">{view}</div>
+        {overlay}
+        {cut && (
+          <StageTool on={cutOn} onChange={setCutOn}>
+            Cut plane
+          </StageTool>
+        )}
+        {hint && <p className="ws-hint">{hint}</p>}
+      </section>
+      <aside className="ws-insp" aria-label="Inspector">
+        <div className={`ws-split ${side ? "" : "solo"}`}>
+          {side && (
+            <section className="ws-secs">
+              <h4 className="ws-h">Sections</h4>
+              {side}
+            </section>
+          )}
+          <div className="ws-info">
+            <section className="ws-def">
+              <h4 className="ws-h">Definition</h4>
+              <div className="prose">{t.short ?? t.body}</div>
+            </section>
+            {readouts && (
+              <section className="ws-reads">
+                <h4 className="ws-h">Readouts</h4>
+                {readouts}
+              </section>
+            )}
+          </div>
+        </div>
+      </aside>
+      {controls && (
+        <div className="ws-params">
+          <h4 className="ws-h">Parameters</h4>
+          <div className="ws-params-body">{controls}</div>
+        </div>
+      )}
+    </>
+  );
+}
+
+/** A volume whose shader can be cut at the analysis plane (VolumeScene). */
+type Cuttable = { set(u: { uCutOn?: number; uCut?: number }): void };
+
+/** On/off tool button for the top-right corner of the 3-D stage. */
+export function StageTool({ on, onChange, children }: { on: boolean; onChange: (v: boolean) => void; children: ReactNode }) {
+  return (
+    <button type="button" aria-pressed={on} onClick={() => onChange(!on)} className={`ws-tool ${on ? "on" : ""}`}>
+      {children}
+    </button>
   );
 }
 

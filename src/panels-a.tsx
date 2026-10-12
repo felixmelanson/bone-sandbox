@@ -19,7 +19,6 @@ import { prepareSchematics, SeparationSchematic, ThicknessSchematic } from "./bo
 import { Viewer } from "./bone/views";
 import { useSpecBV, useSpecField, useSpecimen } from "./specimen";
 import {
-  Controls,
   fmt,
   Frame,
   ColorBar,
@@ -30,7 +29,6 @@ import {
   SquareBtn,
   SliceCanvas,
   Slider,
-  Toggle,
   useDebounced,
   useFrame,
   useInView,
@@ -40,18 +38,17 @@ import {
 const R = 220;
 const D64: Dims = [64, 64, 64];
 /** camera distance for the figure views: close enough that the cube fills its square */
-const VIEW_DIST = 3.6;
+const VIEW_DIST = 4.0;
 const vol = (d: Dims) => d[0] * d[1] * d[2] * VOX_MM ** 3;
 const pct = (v: number) => `${(v * 100).toFixed(1)} %`;
 
 /* =============================== BV/TV ============================== */
 
-export function BVPanel({ className, num = "3.1", fig = 1 }: { className?: string; num?: string; fig?: number }) {
+export function BVPanel(_: { num?: string; fig?: number }) {
   const [ref, seen] = useInView<HTMLDivElement>();
   const f = useSpecField(seen, D64);
   const [vs, setVs] = useState<VolumeScene | null>(null);
   const [bv, setBv] = useSpecBV();
-  const [cut, setCut] = useState(false);
   const [px, setPx] = useRaster();
   const [pxC, setPxC] = useRaster();
 
@@ -68,8 +65,8 @@ export function BVPanel({ className, num = "3.1", fig = 1 }: { className?: strin
   const beta = L ? betaForBV(L.sorted, bv) : 0;
 
   useEffect(() => {
-    vs?.set({ uBeta: beta, uCutOn: cut ? 1 : 0, uCut: 0 });
-  }, [vs, beta, cut]);
+    vs?.set({ uBeta: beta });
+  }, [vs, beta]);
 
   useFrame(() => {
     if (!L) return;
@@ -79,39 +76,46 @@ export function BVPanel({ className, num = "3.1", fig = 1 }: { className?: strin
 
 
   return (
-    <Panel wide id="bv-tv" num={num} fig={fig} className={className}>
-      <div ref={ref} className="fig-trio">
-        <div className="fig aspect-square">
-          <Viewer view={vs} hint={false} alt="Raymarched micro-CT volume of trabecular bone with the analysis plane" />
+    <Panel
+      id="bv-tv"
+      view={
+        <div ref={ref} className="h-full w-full">
+          <Viewer view={vs} hint={false} alt="Raymarched micro-CT volume of trabecular bone with the analysis planes" />
         </div>
-        <div>
-          <Frame>
-            <SliceCanvas pixels={px} R={R} alt="Binarised axial section at the analysis plane: bone white, marrow black" />
-          </Frame>
-          <p className="fig-l">Axial</p>
+      }
+      side={
+        <div className="ws-pair">
+          <div>
+            <Frame>
+              <SliceCanvas pixels={px} R={R} alt="Binarised axial section: bone white, marrow black" />
+            </Frame>
+            <p className="fig-l">Axial</p>
+          </div>
+          <div>
+            <Frame>
+              <SliceCanvas pixels={pxC} R={R} alt="Binarised coronal section: bone white, marrow black" />
+            </Frame>
+            <p className="fig-l">Coronal</p>
+          </div>
         </div>
-        <div>
-          <Frame>
-            <SliceCanvas pixels={pxC} R={R} alt="Binarised coronal section: bone white, marrow black" />
-          </Frame>
-          <p className="fig-l">Coronal</p>
-        </div>
-      </div>
-      <Controls>
-        <Slider label="Segmentation threshold" hint="target BV/TV" value={bv} min={0.06} max={0.5} step={0.005} onChange={setBv} format={pct} />
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <Toggle on={cut} onChange={setCut}>
-            Cut specimen at analysis plane
-          </Toggle>
-        </div>
-      </Controls>
-    </Panel>
+      }
+      readouts={
+        <Readouts>
+          <Readout label="BV/TV" value={L ? (bvForBeta(L.sorted, beta) * 100).toFixed(1) : "-"} unit="%" accent />
+          <Readout label="BV" value={L ? fmt(bvForBeta(L.sorted, beta) * vol(D64), 1) : "-"} unit="mm³" />
+          <Readout label="TV" value={fmt(vol(D64), 1)} unit="mm³" />
+          <Readout label="Voxel" value={(VOX_MM * 1000).toFixed(0)} unit="µm" />
+        </Readouts>
+      }
+      cut={[vs]}
+      controls={<Slider label="Segmentation threshold" hint="target BV/TV" value={bv} min={0.06} max={0.5} step={0.005} onChange={setBv} format={pct} />}
+    />
   );
 }
 
 /* ============================== Conn.D ============================== */
 
-export function ConnPanel({ className, num = "3.2", fig = 2 }: { className?: string; num?: string; fig?: number }) {
+export function ConnPanel(_: { num?: string; fig?: number }) {
   const [ref, seen] = useInView<HTMLDivElement>();
   const S = useSpecimen();
   const [a, setA] = useState(S.a);
@@ -148,41 +152,44 @@ export function ConnPanel({ className, num = "3.2", fig = 2 }: { className?: str
 
   return (
     <Panel
-      wide
       id="conn-d"
-      num={num}
-      fig={fig}
-      className={className}
-      aside={
+      cut={[vs]}
+      view={
+        <div ref={ref} className="h-full w-full">
+          <Viewer view={vs} hint={false} alt="Trabecular network whose connectivity changes with the controls" />
+        </div>
+      }
+      side={
+        <div className="ws-pair">
+          <div>
+            <Frame>
+              <SliceCanvas pixels={px} R={R} alt="Grey axial section through the network" />
+            </Frame>
+            <p className="fig-l">Axial</p>
+          </div>
+          <div>
+            <Frame>
+              <SliceCanvas pixels={pxC} R={R} alt="Grey coronal section through the network" />
+            </Frame>
+            <p className="fig-l">Coronal</p>
+          </div>
+        </div>
+      }
+      readouts={
         <Readouts>
           <Readout label="Conn.D" value={m ? fmt(m.cd, 2) : "-"} unit="mm⁻³" accent />
           <Readout label="χ, purified" value={m ? String(m.chi).replace("-", "−") : "-"} />
-          <Readout label="Conn β₁" value={m ? String(m.conn) : "-"} />
+          <Readout label="Loops β₁" value={m ? String(m.conn) : "-"} />
+          <Readout label="Particles β₀" value={m ? String(m.b0) : "-"} />
         </Readouts>
       }
-    >
-      <div ref={ref} className="fig-trio">
-        <div className="fig aspect-square">
-          <Viewer view={vs} hint={false} alt="Trabecular network whose connectivity changes with the controls" />
-        </div>
-        <div>
-          <Frame>
-            <SliceCanvas pixels={px} R={R} alt="Grey axial section through the network" />
-          </Frame>
-          <p className="fig-l">Axial</p>
-        </div>
-        <div>
-          <Frame>
-            <SliceCanvas pixels={pxC} R={R} alt="Grey coronal section through the network" />
-          </Frame>
-          <p className="fig-l">Coronal</p>
-        </div>
-      </div>
-      <Controls>
-        <Slider label="Plate perforation" hint="plates → rods" value={a} min={0} max={2.4} step={0.05} onChange={setA} format={(v) => v.toFixed(2)} />
-        <Slider label="Bone volume fraction" value={bv} min={0.06} max={0.45} step={0.01} onChange={setBv} format={pct} />
-      </Controls>
-    </Panel>
+      controls={
+        <>
+          <Slider label="Plate perforation" hint="plates → rods" value={a} min={0} max={2.4} step={0.05} onChange={setA} format={(v) => v.toFixed(2)} />
+          <Slider label="Bone volume fraction" value={bv} min={0.06} max={0.45} step={0.01} onChange={setBv} format={pct} />
+        </>
+      }
+    />
   );
 }
 
@@ -201,7 +208,7 @@ const STRUT_R: Record<Kind, (bv: number) => number> = {
   sp: (bv) => 0.75 + (bv - 0.1) * 2.8,
 };
 
-export function ThicknessPanel({ kind, className, num, fig }: { kind: Kind; className?: string; num?: string; fig?: number }) {
+export function ThicknessPanel({ kind }: { kind: Kind; num?: string; fig?: number }) {
   const C = CFG[kind];
   const [ref, seen] = useInView<HTMLDivElement>();
   const lab = useRef<{ q: Float32Array; sorted: Float32Array; d: Dims; lt: Float32Array | null; beta: number } | null>(null);
@@ -209,19 +216,6 @@ export function ThicknessPanel({ kind, className, num, fig }: { kind: Kind; clas
   const [sch, setSch] = useState<ThicknessSchematic | SeparationSchematic | null>(null);
   const [bv, setBv] = useSpecBV();
   const [sweep, setSweep] = useState<number | null>(null);
-  // colour bar matches the height of the specimen view beside it
-  const sliceBox = useRef<HTMLDivElement>(null);
-  const [barH, setBarH] = useState(0);
-  const barBox = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = sliceBox.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => {
-      setBarH((el.firstElementChild as HTMLElement | null)?.getBoundingClientRect().height ?? 0);
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
   const played = useRef(false);
   const [busy, setBusy] = useState(false);
   const [st, setSt] = useState<null | (ReturnType<typeof phaseStats> & { bv: number })>(null);
@@ -233,7 +227,7 @@ export function ThicknessPanel({ kind, className, num, fig }: { kind: Kind; clas
     if (!f) return;
     lab.current = { q: f.q, sorted: f.sorted, d: D64, lt: null, beta: 0 };
     if (vs) return vs.setQ(f.q);
-    const v = new VolumeScene(D64, { ramp: C.stops, dist: VIEW_DIST });
+    const v = new VolumeScene(D64, { ramp: C.stops, dist: 4.4 });
     v.setQ(f.q);
     v.set({ uMode: 1, uPhase: C.fg ? 1 : -1, uAlpha: 1 });
     v.scene.add(planeOutline(0));
@@ -315,16 +309,16 @@ export function ThicknessPanel({ kind, className, num, fig }: { kind: Kind; clas
 
   return (
     <Panel
-      wide
       id={kind === "th" ? "tb-th" : "tb-sp"}
-      num={num ?? (kind === "th" ? "3.3" : "3.4")}
-      fig={fig ?? (kind === "th" ? 3 : 4)}
-      className={className}
-      aside={<SquareBtn onClick={play}>↻ Replay colour sweep</SquareBtn>}
-    >
-      {/* one horizontal row: colour bar, specimen, section, sphere-fitting schematic */}
-      <div ref={ref} className="fig-row grid">
-        <div ref={barBox} style={{ height: barH || 200 }}>
+      cut={[vs]}
+      view={
+        <div ref={ref} className="relative h-full w-full">
+          <Viewer view={vs} hint={false} alt={`Volume coloured by local ${kind === "th" ? "thickness" : "separation"}`} />
+          {busy && <span className="ws-busy">fitting spheres…</span>}
+        </div>
+      }
+      overlay={
+        <div className="ws-bar">
           <ColorBar
             stops={C.stops}
             max={C.max}
@@ -340,45 +334,52 @@ export function ThicknessPanel({ kind, className, num, fig }: { kind: Kind; clas
             }
           />
         </div>
-        <div ref={sliceBox} className="fig relative aspect-square">
-          <Viewer view={vs} interactive={false} alt={`Volume coloured by local ${kind === "th" ? "thickness" : "separation"}`} />
-          {busy && <span className="absolute left-1 top-1 rounded-full bg-white/85 px-2 py-0.5 text-[10px] text-stone-500">fitting spheres…</span>}
+      }
+      side={
+        <div className="ws-pair">
+          <div>
+            <Frame>
+              <SliceCanvas pixels={px} R={R} alt={`Section at the analysis plane coloured by local ${kind === "th" ? "thickness" : "separation"}`} />
+            </Frame>
+            <p className="fig-l">Analysis plane</p>
+          </div>
+          <div>
+            <Frame>
+              <Viewer
+                view={sch}
+                interactive={false}
+                maxDpr={2}
+                hint={false}
+                alt={kind === "th" ? "Schematic trabecula with its chain of maximal inscribed spheres" : "Schematic pores between trabeculae with the largest sphere in each pore"}
+              />
+            </Frame>
+            <p className="fig-l">Sphere fitting</p>
+          </div>
         </div>
-        <div>
-          <Frame>
-            <SliceCanvas pixels={px} R={R} alt={`Section at the analysis plane coloured by local ${kind === "th" ? "thickness" : "separation"}`} />
-          </Frame>
-        </div>
-        <div>
-          <Frame>
-            <Viewer
-              view={sch}
-              interactive={false}
-              maxDpr={2}
-              alt={kind === "th" ? "Schematic trabecula with its chain of maximal inscribed spheres" : "Schematic pores between trabeculae with the largest sphere in each pore"}
-            />
-          </Frame>
-        </div>
-      </div>
-
-      <Controls>
-        <Slider
-          label={kind === "th" ? "Trabecular thickening" : "Bone volume (pores shrink →)"}
-          hint="BV/TV"
-          value={bv}
-          min={C.range[0]}
-          max={C.range[1]}
-          step={0.01}
-          onChange={setBv}
-          format={pct}
-        />
+      }
+      readouts={
         <Readouts>
           <Readout label={`${metric} mean`} value={st ? fmt(st.mean, 3) : "-"} unit="mm" accent />
           <Readout label="SD" value={st ? fmt(st.sd, 3) : "-"} unit="mm" />
           <Readout label={`${metric} max`} value={st ? fmt(st.max, 2) : "-"} unit="mm" />
           <Readout label="BV/TV" value={st ? (st.bv * 100).toFixed(1) : "-"} unit="%" />
         </Readouts>
-      </Controls>
-    </Panel>
+      }
+      controls={
+        <>
+          <Slider
+            label={kind === "th" ? "Trabecular thickening" : "Bone volume (pores shrink →)"}
+            hint="BV/TV"
+            value={bv}
+            min={C.range[0]}
+            max={C.range[1]}
+            step={0.01}
+            onChange={setBv}
+            format={pct}
+          />
+          <SquareBtn onClick={play}>↻ Replay colour sweep</SquareBtn>
+        </>
+      }
+    />
   );
 }

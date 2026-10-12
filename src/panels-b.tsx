@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import * as THREE from "three";
-import { cssRamp, EF_RAMP } from "./bone/colormap";
 import {
   betaForBV,
   binarize,
@@ -12,7 +11,7 @@ import {
   type QField,
   type V3,
 } from "./bone/engine";
-import { addLights, makeCamera, tube, VolumeScene, type Viewable } from "./bone/raymarch";
+import { tube, VolumeScene, type Uniforms, type Viewable } from "./bone/raymarch";
 import type { Dims } from "./bone/volume";
 import { markStudio, Viewer } from "./bone/views";
 import { disposeScene } from "./bone/dispose";
@@ -20,7 +19,7 @@ import { boneAt, gstRose, mil, roseDA, svd, type Rose } from "./bone/fabric";
 import { mulberry32 } from "./bone/volume";
 import { MilPanel, Placeholder, SvdPanel, type FabricData } from "./milsvd";
 import { getModel, useSpecField, useSpecimen } from "./specimen";
-import { Controls, fmt, Panel, Readout, Readouts, schedule, Seg, Slider, useDebounced, useInView } from "./ui";
+import { fmt, Panel, Readout, Readouts, schedule, Slider, useDebounced, useInView } from "./ui";
 
 const deg = (r: number) => (r * 180) / Math.PI;
 const rad = (d: number) => (d * Math.PI) / 180;
@@ -270,13 +269,7 @@ function drawStruts(ctx: CanvasRenderingContext2D, cam: THREE.Camera, w: number,
 }
 
 /** Fixed frontal view of one specimen with its strut axes dashed on top. */
-function FabricView({ spec, psi }: { spec: FabSpec | null; psi: number }) {
-  const lines = useRef<[V3, V3][]>([]);
-  const [vs] = useState(() => {
-    const v = new VolumeScene([64, 64, 64], { view: DA_VIEW, dist: 3.6 });
-    (v as Viewable).overlay = (ctx, cam, w, h) => drawStruts(ctx, cam, w, h, lines.current);
-    return v;
-  });
+function FabricView({ spec, psi, vs, lines }: { spec: FabSpec | null; psi: number; vs: VolumeScene; lines: React.MutableRefObject<[V3, V3][]> }) {
   useEffect(() => {
     if (!spec) return;
     vs.setQ(spec.q);
@@ -289,18 +282,20 @@ function FabricView({ spec, psi }: { spec: FabSpec | null; psi: number }) {
     lines.current = strutLines(spec, M);
     vs.onChange();
   }, [vs, spec, psi]);
-  return (
-    <div className="fig aspect-square">
-      <Viewer view={spec ? vs : null} interactive={false} hint={false} alt="Specimen with dashed lines along the struts" />
-    </div>
-  );
+  return <Viewer view={spec ? vs : null} hint={false} alt="Specimen with dashed lines along the struts" />;
 }
 
-export function DAPanel({ className, num = "3.5", fig = 5 }: { className?: string; num?: string; fig?: number }) {
+export function DAPanel(_: { num?: string; fig?: number }) {
   const [ref, seen] = useInView<HTMLDivElement>();
+  const daLines = useRef<[V3, V3][]>([]);
+  const [daVs] = useState(() => {
+    const v = new VolumeScene([64, 64, 64], { view: DA_VIEW, dist: 4.0 });
+    (v as Viewable).overlay = (ctx, cam, w, h) => drawStruts(ctx, cam, w, h, daLines.current);
+    return v;
+  });
   const S = useSpecimen();
-  const [k, setK] = useState(3.2);
-  const [psi, setPsi] = useState(28);
+  const [k, setK] = useState(1);
+  const [psi, setPsi] = useState(0);
   const f = useSpecField(seen, D64, { k });
   const [spec, setSpec] = useState<FabSpec | null>(null);
   const [fabric, setFabric] = useState<FabricData | null>(null);
@@ -331,195 +326,39 @@ export function DAPanel({ className, num = "3.5", fig = 5 }: { className?: strin
 
   return (
     <Panel
-      wide
       id="da"
-      num={num}
-      fig={fig}
-      className={className}
-      aside={
+      cut={[daVs]}
+      view={
+        <div ref={ref} className="h-full w-full">
+          <FabricView spec={spec} psi={psi} vs={daVs} lines={daLines} />
+        </div>
+      }
+      side={
+        <div className="ws-pair">
+          <div>{fabric && milR ? <MilPanel compact f={fabric} rose={milR} /> : <Placeholder />}</div>
+          <div>{fabric && svdR ? <SvdPanel compact f={fabric} a={svdR.a} b={svdR.b} /> : <Placeholder />}</div>
+        </div>
+      }
+      readouts={
         <Readouts>
           <Readout label="DA" value={spec ? fmt(spec.da, 3) : "-"} accent />
+          <Readout label="Tensor 1 − min/max" value={fabric ? roseDA(fabric.gst).toFixed(2) : "-"} />
           <Readout label="MIL 1 − min/max" value={milR ? roseDA(milR).toFixed(2) : "-"} />
           <Readout label="SVD 1 − min/max" value={svdR ? roseDA(svdR.a).toFixed(2) : "-"} />
-          <Readout label="Tensor 1 − min/max" value={fabric ? roseDA(fabric.gst).toFixed(2) : "-"} />
         </Readouts>
       }
-    >
-      <div ref={ref} className="fig-trio">
-        <FabricView spec={spec} psi={psi} />
-        <div>{fabric && milR ? <MilPanel compact f={fabric} rose={milR} /> : <Placeholder />}</div>
-        <div>{fabric && svdR ? <SvdPanel compact f={fabric} a={svdR.a} b={svdR.b} /> : <Placeholder />}</div>
-      </div>
-      <Controls>
-        <Slider label="Fabric alignment" hint="stretch along the principal axis" value={k} min={1} max={4} step={0.1} onChange={setK} format={(v) => `${v.toFixed(1)} : 1`} />
-        <Slider label="Alignment direction" value={psi} min={0} max={180} step={1} onChange={setPsi} format={(v) => `${v.toFixed(0)}°`} />
-      </Controls>
-    </Panel>
+      controls={
+        <>
+          <Slider label="Fabric alignment" hint="stretch along the principal axis" value={k} min={1} max={4} step={0.1} onChange={setK} format={(v) => `${v.toFixed(1)} : 1`} />
+          <Slider label="Alignment direction" value={psi} min={0} max={180} step={1} onChange={setPsi} format={(v) => `${v.toFixed(0)}°`} />
+        </>
+      }
+    />
   );
 }
 
 /* ================================ EF ================================ */
 
-function label(text: string, color = "#222") {
-  const c = document.createElement("canvas");
-  c.width = c.height = 128;
-  const g = c.getContext("2d")!;
-  g.font = "italic 84px Arial, sans-serif";
-  g.textAlign = "center";
-  g.textBaseline = "middle";
-  g.fillStyle = color;
-  g.fillText(text, 64, 70);
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, depthTest: false, transparent: true }));
-  s.scale.set(0.2, 0.2, 1);
-  s.renderOrder = 30;
-  return s;
-}
-
-function doubleArrow(len: number, color: THREE.ColorRepresentation, r = 0.014) {
-  const g = new THREE.Group();
-  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.4 });
-  const head = 0.1;
-  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 2 * (len - head), 12), mat);
-  g.add(shaft);
-  for (const s of [1, -1]) {
-    const cone = new THREE.Mesh(new THREE.ConeGeometry(r * 3, head, 18), mat);
-    cone.position.y = s * (len - head / 2);
-    if (s < 0) cone.rotation.x = Math.PI;
-    g.add(cone);
-  }
-  return g;
-}
-
-function latLong() {
-  const p: number[] = [];
-  const seg = 72;
-  for (let m = 0; m < 8; m++) {
-    const ph = (m / 8) * Math.PI;
-    for (let i = 0; i < seg; i++) {
-      const a = (i / seg) * 2 * Math.PI;
-      const b = ((i + 1) / seg) * 2 * Math.PI;
-      p.push(Math.cos(a), Math.sin(a) * Math.cos(ph), Math.sin(a) * Math.sin(ph));
-      p.push(Math.cos(b), Math.sin(b) * Math.cos(ph), Math.sin(b) * Math.sin(ph));
-    }
-  }
-  for (let l = 1; l < 8; l++) {
-    const x = -1 + (2 * l) / 8;
-    const rr = Math.sqrt(1 - x * x);
-    for (let i = 0; i < seg; i++) {
-      const a = (i / seg) * 2 * Math.PI;
-      const b = ((i + 1) / seg) * 2 * Math.PI;
-      p.push(x, rr * Math.cos(a), rr * Math.sin(a), x, rr * Math.cos(b), rr * Math.sin(b));
-    }
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute("position", new THREE.Float32BufferAttribute(p, 3));
-  return g;
-}
-
-const AX = { c: 0xc8324f, b: 0x2a9d8f, a: 0x3b6fb6 };
-
-/** One ellipsoid: semi-axes a <= b <= c, major axis at polar theta / azimuth phi. */
-class EllipsoidScene implements Viewable {
-  scene = new THREE.Scene();
-  camera = makeCamera([1.55, 1.05, 1.9], 30, 5.7);
-  onChange = () => {};
-  private frame = new THREE.Group();
-  private shape = new THREE.Group();
-  private arrows = new THREE.Group();
-  private section: THREE.LineLoop;
-  private disc: THREE.Mesh;
-  private arcs = new THREE.Group();
-  private lt = label("θ");
-  private lp = label("φ");
-
-  constructor() {
-    addLights(this.scene);
-    const grey = new THREE.MeshBasicMaterial({ color: 0x9a948a });
-    const ends: [V3, string][] = [
-      [[1.35, 0, 0], "x"],
-      [[0, 1.35, 0], "y"],
-      [[0, 0, 1.35], "z"],
-    ];
-    for (const [e, n] of ends) {
-      this.scene.add(tube([-e[0], -e[1], -e[2]], e, 0.004, grey));
-      const s = label(n, "#8a847a");
-      s.position.set(e[0] * 1.08, e[1] * 1.08, e[2] * 1.08);
-      s.scale.set(0.14, 0.14, 1);
-      this.scene.add(s);
-    }
-    const body = new THREE.Mesh(
-      new THREE.SphereGeometry(1, 96, 64),
-      new THREE.MeshPhysicalMaterial({ color: 0xe9e1cf, roughness: 0.36, clearcoat: 0.6, clearcoatRoughness: 0.25, transparent: true, opacity: 0.8, depthWrite: false })
-    );
-    const wire = new THREE.LineSegments(latLong(), new THREE.LineBasicMaterial({ color: 0x6f6658, transparent: true, opacity: 0.35 }));
-    this.shape.add(body, wire);
-    this.section = new THREE.LineLoop(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: 0x4a7bd0 }));
-    this.disc = new THREE.Mesh(
-      new THREE.PlaneGeometry(1, 1),
-      new THREE.MeshBasicMaterial({ color: 0x4a7bd0, transparent: true, opacity: 0.09, side: THREE.DoubleSide, depthWrite: false })
-    );
-    this.disc.rotation.y = Math.PI / 2;
-    this.frame.add(this.shape, this.arrows, this.section, this.disc);
-    this.scene.add(this.frame, this.arcs, this.lt, this.lp);
-  }
-
-  update(c: number, b: number, a: number, theta: number, phi: number) {
-    const u = new THREE.Vector3(Math.sin(theta) * Math.cos(phi), Math.cos(theta), Math.sin(theta) * Math.sin(phi));
-    this.frame.quaternion.setFromUnitVectors(new THREE.Vector3(1, 0, 0), u);
-    this.shape.scale.set(c, b, a);
-
-    this.arrows.clear();
-    const ac = doubleArrow(c + 0.24, AX.c);
-    ac.rotation.z = -Math.PI / 2;
-    const ab = doubleArrow(b + 0.24, AX.b);
-    const aa = doubleArrow(a + 0.24, AX.a);
-    aa.rotation.x = Math.PI / 2;
-    this.arrows.add(ac, ab, aa);
-
-    const pts: THREE.Vector3[] = [];
-    for (let i = 0; i < 96; i++) {
-      const t = (i / 96) * Math.PI * 2;
-      pts.push(new THREE.Vector3(0, b * Math.cos(t), a * Math.sin(t)));
-    }
-    this.section.geometry.dispose();
-    this.section.geometry = new THREE.BufferGeometry().setFromPoints(pts);
-    const m = 2.5 * Math.max(a, b);
-    this.disc.scale.set(m, m, 1);
-
-    // angle arcs: theta from +y to the major axis, phi in the xz plane from +x
-    this.arcs.clear();
-    const lineMat = new THREE.LineBasicMaterial({ color: 0x222222 });
-    const dashMat = new THREE.LineDashedMaterial({ color: 0x555555, dashSize: 0.04, gapSize: 0.03 });
-    const y = new THREE.Vector3(0, 1, 0);
-    const arcT: THREE.Vector3[] = [];
-    for (let i = 0; i <= 40; i++) arcT.push(y.clone().lerp(u, i / 40).normalize().multiplyScalar(0.62));
-    this.arcs.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(arcT), lineMat));
-    this.lt.position.copy(y.clone().lerp(u, 0.5).normalize().multiplyScalar(0.8));
-    const proj = new THREE.Vector3(u.x, 0, u.z);
-    const pl = proj.length();
-    if (pl > 1e-3) {
-      proj.normalize();
-      const arcP: THREE.Vector3[] = [];
-      for (let i = 0; i <= 40; i++) {
-        const f = (phi * i) / 40;
-        arcP.push(new THREE.Vector3(Math.cos(f), 0, Math.sin(f)).multiplyScalar(0.5));
-      }
-      this.arcs.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(arcP), lineMat));
-      const tip = u.clone().multiplyScalar(c);
-      const drop = new THREE.Line(new THREE.BufferGeometry().setFromPoints([tip, new THREE.Vector3(tip.x, 0, tip.z), new THREE.Vector3(0, 0, 0)]), dashMat);
-      drop.computeLineDistances();
-      this.arcs.add(drop);
-      this.lp.position.set(Math.cos(phi / 2) * 0.66, 0, Math.sin(phi / 2) * 0.66);
-      this.lp.visible = true;
-    } else this.lp.visible = false;
-    this.onChange();
-  }
-  tick() {
-    return false;
-  }
-}
 
 /* Medal metals (linear base reflectance): bronze = misaligned, silver = intermediate, gold = aligned with N. */
 const BRONZE = new THREE.Color(0.8, 0.46, 0.24);
@@ -558,6 +397,16 @@ export class FieldScene extends VolumeScene {
       this.bone.camera = this.camera;
       this.peers = [this.bone];
       this.bone.peers = [this];
+    }
+  }
+
+  /** The cut plane also clips the glyphs, so nothing floats above the cut volume. */
+  private clip = [new THREE.Plane(new THREE.Vector3(0, -1, 0), 0)];
+  set(u: Uniforms) {
+    super.set(u);
+    if (u.uCutOn !== undefined && this.glyphs) {
+      (this.glyphs.material as THREE.Material).clippingPlanes = u.uCutOn ? this.clip : [];
+      this.onChange();
     }
   }
 
@@ -670,8 +519,9 @@ export class FieldScene extends VolumeScene {
 
 const U0 = new THREE.Vector3(Math.sin(rad(55)) * Math.cos(rad(30)), Math.cos(rad(55)), Math.sin(rad(55)) * Math.sin(rad(30))).normalize();
 const QROT = new THREE.Quaternion().setFromUnitVectors(U0, new THREE.Vector3(1, 0, 0));
-export const M_TEX = new THREE.Matrix3().setFromMatrix4(new THREE.Matrix4().makeRotationFromQuaternion(QROT));
-export const M_WORLD = M_TEX.clone().transpose();
+export const M_TEX_OBLIQUE = new THREE.Matrix3().setFromMatrix4(new THREE.Matrix4().makeRotationFromQuaternion(QROT));
+export const M_WORLD_OBLIQUE = M_TEX_OBLIQUE.clone().transpose();
+const IDENT = new THREE.Matrix3();
 
 export type FieldStats = { S: number; N: V3; Q: number[]; ef: number; plates: number; rods: number; n: number };
 
@@ -679,7 +529,11 @@ export type FieldStats = { S: number; N: V3; Q: number[]; ef: number; plates: nu
  * Local fabric glyphs (structure-tensor ellipsoids on a 6x6x6 grid, snapped to bone) and the
  * nematic order tensor of their long axes, written into a FieldScene. Returns the summary stats.
  */
-export function buildNematic(F: FieldScene, q: Float32Array, bone: Uint8Array, d: Dims, beta: number): FieldStats {
+export function buildNematic(F: FieldScene, q: Float32Array, bone: Uint8Array, d: Dims, beta: number, oblique = true): FieldStats {
+  // `oblique` samples the field through a fixed rotation so the director is off-axis; off, the specimen
+  // is shown exactly as in the other metrics
+  const M_TEX = oblique ? M_TEX_OBLIQUE : IDENT;
+  const M_WORLD = oblique ? M_WORLD_OBLIQUE : IDENT;
   const { local } = gradTensor(bone, d, 2.5);
   F.setQ(q);
   F.setTexRot(M_TEX);
@@ -747,166 +601,74 @@ export function buildNematic(F: FieldScene, q: Float32Array, bone: Uint8Array, d
   return { S: eq.values[0], N, Q, ef: efSum / (cnt || 1), plates: plates / (cnt || 1), rods: rods / (cnt || 1), n: cnt };
 }
 
-export function EFPanel({ className, num = "3.6", fig = 6 }: { className?: string; num?: string; fig?: number }) {
+export function EFPanel(_: { num?: string; fig?: number }) {
   const [ref, seen] = useInView<HTMLDivElement>();
   const S = useSpecimen();
-  // the ellipsoid eigen-frame view is switched off for now; flip to "single" to bring it back
-  const [mode] = useState<"single" | "field">("field");
-  const [single, setSingle] = useState<EllipsoidScene | null>(null);
   const [field, setField] = useState<FieldScene | null>(null);
-  const [ax, setAx] = useState({ c: 1, b: 0.24, a: 0.22 });
-  const [th, setTh] = useState(60);
-  const [ph, setPh] = useState(35);
-  const [k, setK] = useState(2.2);
+  const [k, setK] = useState(1);
   const [fs, setFs] = useState<FieldStats | null>(null);
 
   useEffect(() => {
-    if (seen && mode === "single" && !single) schedule(() => setSingle(new EllipsoidScene()));
-  }, [seen, mode, single]);
-  useEffect(() => {
-    if (seen && mode === "field" && !field) schedule(() => setField(new FieldScene()));
-  }, [seen, mode, field]);
-
-  useEffect(() => {
-    single?.update(ax.c, ax.b, ax.a, rad(th), rad(ph));
-  }, [single, ax, th, ph]);
+    if (seen && !field) schedule(() => setField(new FieldScene(D64)));
+  }, [seen, field]);
 
   useDebounced(
     () => {
       const F = field;
       if (!F) return;
       schedule(() => {
-        const d: Dims = [48, 48, 48];
-        const q = getModel(S.model, d, k, S.rung).combine(S.a);
+        const q = getModel(S.model, D64, k, S.rung).combine(S.a);
         const beta = betaForBV(sortedCopy(q), S.bv);
         const bone = binarize(q, beta);
-        setFs(buildNematic(F, q, bone, d, beta));
+        setFs(buildNematic(F, q, bone, D64, beta, false));
       });
     },
     [field, k, S.model, S.rung, S.a, S.bv],
     120
   );
 
-  const sorted = [ax.a, ax.b, ax.c].sort((p, q) => p - q);
-  const EF = sorted[0] / sorted[1] - sorted[1] / sorted[2];
-  const shapeName = EF > 0.3 ? "Prolate · rod-like" : EF < -0.3 ? "Oblate · plate-like" : "Intermediate";
-
-  // shape tensor of the ellipsoid  x^T A x = 1,  A = R diag(1/c^2, 1/b^2, 1/a^2) R^T
-  const A = useMemo(() => {
-    const u = new THREE.Vector3(Math.sin(rad(th)) * Math.cos(rad(ph)), Math.cos(rad(th)), Math.sin(rad(th)) * Math.sin(rad(ph)));
-    const qq = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), u);
-    const R = new THREE.Matrix4().makeRotationFromQuaternion(qq);
-    const e = [new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)].map((v) => v.applyMatrix4(R));
-    const l = [1 / ax.c ** 2, 1 / ax.b ** 2, 1 / ax.a ** 2];
-    const M = [0, 0, 0, 0, 0, 0];
-    e.forEach((v, i) => {
-      M[0] += l[i] * v.x * v.x;
-      M[1] += l[i] * v.y * v.y;
-      M[2] += l[i] * v.z * v.z;
-      M[3] += l[i] * v.x * v.y;
-      M[4] += l[i] * v.x * v.z;
-      M[5] += l[i] * v.y * v.z;
-    });
-    return { M, eig: eigSym3(M) };
-  }, [ax, th, ph]);
-
-  const presets = {
-    rod: { c: 1, b: 0.24, a: 0.22 },
-    plate: { c: 0.95, b: 0.82, a: 0.14 },
-    sphere: { c: 0.6, b: 0.6, a: 0.6 },
-  };
   const sph = (v: V3) => {
     const s = v[1] < 0 ? -1 : 1;
     const w = v.map((x) => x * s);
     return { t: deg(Math.acos(Math.min(1, w[1]))), p: ((deg(Math.atan2(w[2], w[0])) % 360) + 360) % 360 };
   };
   const Nd = fs ? sph(fs.N) : null;
-  const major = sph(A.eig.vectors[2]);
 
   return (
     <Panel
-      wide
       id="ef"
-      num={num}
-      fig={fig}
-      className={className}
-      aside={
-        mode === "field" && (
-          <Readouts>
-            <Readout label="Order S" value={fs ? fs.S.toFixed(3) : "-"} accent />
-            <Readout label="Director θ, φ" value={Nd ? `${Nd.t.toFixed(0)}°, ${Nd.p.toFixed(0)}°` : "-"} />
-            <Readout label="⟨EF⟩" value={fs ? fs.ef.toFixed(3) : "-"} />
-            <Readout label="Plates / rods" value={fs ? `${(fs.plates * 100).toFixed(0)} / ${(fs.rods * 100).toFixed(0)}` : "-"} unit="%" />
-          </Readouts>
-        )
+      cut={[field, field?.bone]}
+      view={
+        <div ref={ref} className="h-full w-full">
+          <Viewer view={field} hint={false} alt="Transparent specimen with fabric ellipsoids, director axis, Q eigenframe and order cone" />
+        </div>
       }
-    >
-      <div ref={ref} />
-      <div className={`mx-auto grid grid-cols-1 gap-2 ${mode === "single" ? "max-w-[480px]" : ""}`}>
-        {mode === "single" ? (
-          <div className="fig aspect-square">
-            <Viewer view={single} alt="Ellipsoid with principal axes, section AA and angle construction" />
-          </div>
-        ) : (
-          <div className="ef-row">
-            {/* glyph colour = alignment with the director N̂ */}
-            <div className="ef-bar" aria-label="Glyph colour: alignment with the director N̂">
-              <span>along N̂</span>
-              <i style={{ background: METAL_CSS.replace("to right", "to top") }} />
-              <span>across N̂</span>
+      overlay={
+        <div className="ws-bar ef-bar" aria-label="Glyph colour: alignment with the director N̂">
+          <span>along N̂</span>
+          <i style={{ background: METAL_CSS.replace("to right", "to top") }} />
+          <span>across N̂</span>
+        </div>
+      }
+      side={
+        <div className="ws-pair">
+          <div>
+            <div className="fig frame2d aspect-square ws-solid">
+              <Viewer view={field?.bone ?? null} hint={false} alt="Solid trabecular bone specimen, same camera" />
             </div>
-            <div className="fig aspect-square">
-              <Viewer view={field?.bone ?? null} hint={false} alt="Solid trabecular bone specimen" />
-            </div>
-            <div className="fig aspect-square">
-              <Viewer view={field} hint={false} alt="Transparent specimen with fabric ellipsoids, director axis, Q eigenframe and order cone" />
-            </div>
+            <p className="fig-l">Solid specimen</p>
           </div>
-        )}
-        {mode === "single" ? (
-          <div className="flex items-center gap-2 text-[11px] text-stone-600">
-            <span className="whitespace-nowrap">−1 oblate · plate</span>
-            <span className="h-2 flex-1 rounded-full" style={{ background: cssRamp(EF_RAMP).replace("to top", "to right") }} />
-            <span className="whitespace-nowrap">+1 prolate · rod</span>
-          </div>
-        ) : null}
-      </div>
-
-      {mode === "single" ? (
-        <Controls>
-          <Seg
-            label="Shape"
-            value={(Object.keys(presets) as (keyof typeof presets)[]).find((p) => presets[p].a === ax.a && presets[p].b === ax.b && presets[p].c === ax.c) ?? "custom"}
-            onChange={(v) => v !== "custom" && setAx(presets[v as keyof typeof presets])}
-            options={[
-              { v: "rod", t: "Prolate (EF → +1)" },
-              { v: "plate", t: "Oblate (EF → −1)" },
-              { v: "sphere", t: "Sphere" },
-              { v: "custom", t: "Custom" },
-            ]}
-          />
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Slider label={<span style={{ color: "#c8324f" }}>c</span>} value={ax.c} min={0.1} max={1} step={0.01} onChange={(c) => setAx({ ...ax, c })} format={(v) => v.toFixed(2)} />
-            <Slider label={<span style={{ color: "#2a9d8f" }}>b</span>} value={ax.b} min={0.1} max={1} step={0.01} onChange={(b) => setAx({ ...ax, b })} format={(v) => v.toFixed(2)} />
-            <Slider label={<span style={{ color: "#3b6fb6" }}>a</span>} value={ax.a} min={0.1} max={1} step={0.01} onChange={(a) => setAx({ ...ax, a })} format={(v) => v.toFixed(2)} />
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Slider label="Polar angle θ" value={th} min={0} max={180} step={1} onChange={setTh} format={(v) => `${v}°`} />
-            <Slider label="Azimuth φ" value={ph} min={0} max={359} step={1} onChange={setPh} format={(v) => `${v}°`} />
-          </div>
-          <Readouts>
-            <Readout label="EF = a/b − b/c" value={EF.toFixed(3)} accent />
-            <Readout label="Class" value={shapeName} />
-            <Readout label="Major axis θ, φ" value={`${major.t.toFixed(0)}°, ${major.p.toFixed(0)}°`} />
-            <Readout label="λ = 1/r²" value={A.eig.values.map((v) => v.toFixed(1)).join(" / ")} />
-          </Readouts>
-          <Mat3 m={tensorMat(A.M)} label="A" />
-        </Controls>
-      ) : (
-        <Controls>
-          <Slider label="Trabecular alignment" hint="isotropic → nematic" value={k} min={1} max={4} step={0.1} onChange={setK} format={(v) => `${v.toFixed(1)} : 1`} />
-        </Controls>
-      )}
-    </Panel>
+        </div>
+      }
+      readouts={
+        <Readouts>
+          <Readout label="Order S" value={fs ? fs.S.toFixed(3) : "-"} accent />
+          <Readout label="Director θ, φ" value={Nd ? `${Nd.t.toFixed(0)}°, ${Nd.p.toFixed(0)}°` : "-"} />
+          <Readout label="⟨EF⟩" value={fs ? fs.ef.toFixed(3) : "-"} />
+          <Readout label="Plates / rods" value={fs ? `${(fs.plates * 100).toFixed(0)} / ${(fs.rods * 100).toFixed(0)}` : "-"} unit="%" />
+        </Readouts>
+      }
+      controls={<Slider label="Trabecular alignment" hint="isotropic → nematic" value={k} min={1} max={4} step={0.1} onChange={setK} format={(v) => `${v.toFixed(1)} : 1`} />}
+    />
   );
 }

@@ -48,6 +48,7 @@ export function createRendererIn(host: HTMLElement, className = "block h-full w-
 export function createRenderer(canvas: HTMLCanvasElement) {
   const r = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: "high-performance" });
   r.setClearColor(0x000000, 0);
+  r.localClippingEnabled = true; // lets overlays (EF glyphs) follow the cut plane
   r.outputColorSpace = THREE.SRGBColorSpace;
   canvas.addEventListener("webglcontextlost", (e) => e.preventDefault());
   return r;

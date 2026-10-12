@@ -1,30 +1,31 @@
 /* =====================================================================
-   Explore: the sandbox as a paper. Title block, then one numbered row per
-   section: the figure floats right with its own controls, and the concise
-   text wraps around and below it. The specimen chosen in section 1 is
-   shared with every metric figure in section 2.
+   Explore: the morphometry workspace.
+   ---------------------------------------------------------------------
+     left    specimen library (coronal sections of each synthetic lattice),
+             metric list, and the active metric's parameters
+     centre  the 3-D specimen on a gridded stage
+     right   inspector: 2-D sections, readouts, definition
+   Only the active metric is mounted (keyed), so switching tears down its
+   WebGL views before the next metric builds its own.
    ===================================================================== */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import "./explore.css";
-import { betaForBV, mix, renderCoronal, sortedCopy, type QField, type Shade, type V3 } from "./bone/engine";
+import * as THREE from "three";
+import { SP_RAMP, TH_RAMP } from "./bone/colormap";
+import { betaForBV, binarize, sortedCopy, VOX_MM } from "./bone/engine";
 import { buildModel, MODELS, type ModelId } from "./bone/models";
-import { VolumeScene } from "./bone/raymarch";
-import { Viewer } from "./bone/views";
-import type { Dims } from "./bone/volume";
-import { BVPanel, ConnPanel, ThicknessPanel } from "./panels-a";
-import { DAPanel, EFPanel } from "./panels-b";
+import { localThickness, smoothInPhase, type Dims } from "./bone/volume";
+import { disposeScene } from "./bone/dispose";
+import { coronalOutline, planeOutline, VolumeScene } from "./bone/raymarch";
+import { attachStudio, createRenderer, destroyRenderer } from "./bone/views";
 import { FactorialPaper } from "./factorial";
-import { DEFAULT_SPECIMEN, getModel, SEED, SpecimenCtx, type SpecimenChoice } from "./specimen";
-import { REFERENCES } from "./text";
-import { Controls, Readout, Readouts, schedule, Slider, useDebounced, useInView } from "./ui";
+import { BVPanel, ConnPanel, ThicknessPanel } from "./panels-a";
+import { buildNematic, DAPanel, EFPanel, FieldScene } from "./panels-b";
+import { DEFAULT_SPECIMEN, SEED, SpecimenCtx, type SpecimenChoice } from "./specimen";
+import { schedule } from "./ui";
 
-const D: Dims = [64, 64, 64];
-const BONE: V3 = [238, 234, 224];
-const MARROW: V3 = [20, 20, 22];
-const shade: Shade = (c) => [mix(MARROW[0], BONE[0], c), mix(MARROW[1], BONE[1], c), mix(MARROW[2], BONE[2], c)];
-
-/** Models on this page, in bracing order, named for the group each stands in for. */
+/** Specimen models, named for the group each stands in for. */
 const LIBRARY: { id: ModelId; name: string }[] = [
   { id: "tworod", name: "Test 1" },
   { id: "hybrid", name: "AMB" },
@@ -32,166 +33,254 @@ const LIBRARY: { id: ModelId; name: string }[] = [
   { id: "columns", name: "HLU-HP" },
   { id: "rungs", name: "Test 2" },
   { id: "graph", name: "Isotropic null" },
-  { id: "mixed", name: "Plate fraction" },
 ];
 
-function thumb(q: QField, beta: number, R = 128) {
-  const c = document.createElement("canvas");
-  c.width = c.height = R;
-  const ctx = c.getContext("2d")!;
-  const img = ctx.createImageData(R, R);
-  img.data.set(renderCoronal(q, D, beta, (D[2] - 1) / 2, R, shade));
-  ctx.putImageData(img, 0, 0);
-  return c.toDataURL();
+type MetricId = "bv-tv" | "conn-d" | "tb-th" | "tb-sp" | "da" | "ef" | "p2";
+const METRIC_LIST: { id: MetricId; sym: string; name: string }[] = [
+  { id: "bv-tv", sym: "BV/TV", name: "Bone volume fraction" },
+  { id: "conn-d", sym: "Conn.D", name: "Connectivity density" },
+  { id: "tb-th", sym: "Tb.Th", name: "Trabecular thickness" },
+  { id: "tb-sp", sym: "Tb.Sp", name: "Trabecular separation" },
+  { id: "da", sym: "DA", name: "Degree of anisotropy" },
+  { id: "ef", sym: "EF", name: "Ellipsoid factor" },
+  { id: "p2", sym: "P₂far", name: "Strut order by depth" },
+];
+
+const D: Dims = [64, 64, 64];
+
+type Thumb = { scene: THREE.Scene; camera: THREE.PerspectiveCamera };
+
+/**
+ * Renders a list of small preview scenes with one short-lived WebGL renderer (one scene per
+ * scheduled task) and returns them as image URLs. The renderer is released once all are done.
+ */
+function useThumbs<K extends string>(jobs: { key: K; make: () => Thumb }[], delay: number) {
+  const [urls, setUrls] = useState<Partial<Record<K, string>>>({});
+  useEffect(() => {
+    let r: THREE.WebGLRenderer | null = null;
+    let left = jobs.length;
+    let alive = true;
+    const t = window.setTimeout(() => {
+      try {
+        const c = document.createElement("canvas");
+        c.width = c.height = 168;
+        r = createRenderer(c);
+        r.setSize(168, 168, false);
+      } catch {
+        return;
+      }
+      for (const j of jobs)
+        schedule(() => {
+          if (!alive || !r) return;
+          const { scene, camera } = j.make();
+          attachStudio(scene, r);
+          camera.aspect = 1;
+          camera.updateProjectionMatrix();
+          r.render(scene, camera);
+          const url = r.domElement.toDataURL();
+          disposeScene(scene);
+          setUrls((p) => ({ ...p, [j.key]: url }));
+          if (--left === 0) {
+            destroyRenderer(r);
+            r = null;
+          }
+        });
+    }, delay);
+    return () => {
+      alive = false;
+      clearTimeout(t);
+      if (r) destroyRenderer(r);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return urls;
 }
 
-/* ------------------------- 1.1 model library -------------------------- */
+const bvOf = (id: ModelId) => MODELS.find((x) => x.id === id)!.bv;
 
-function ModelsRow({ spec, setSpec }: { spec: SpecimenChoice; setSpec: (s: SpecimenChoice) => void }) {
-  const [ref, seen] = useInView<HTMLDivElement>();
-  const [vs, setVs] = useState<VolumeScene | null>(null);
-  const [sorted, setSorted] = useState<Float32Array | null>(null);
-  const [thumbs, setThumbs] = useState<Partial<Record<ModelId, string>>>({});
-  const { model, rung, a, bv } = spec;
+/** Specimen previews: each model at its typical BV/TV. */
+const SPEC_JOBS = LIBRARY.map((m) => ({
+  key: m.id,
+  make: (): Thumb => {
+    const q = buildModel(m.id, SEED, D, 1).combine(0.85);
+    const vs = new VolumeScene(D, { dist: 3.9 });
+    vs.setQ(q);
+    vs.set({ uBeta: betaForBV(sortedCopy(q), bvOf(m.id)), uSteps: 260 });
+    return vs;
+  },
+}));
 
-  useEffect(() => {
-    if (seen && !vs) schedule(() => setVs(new VolumeScene(D, { dist: 3.35 })));
-  }, [seen, vs]);
-  useDebounced(
-    () => {
-      if (!vs) return;
-      schedule(() => {
-        const q = getModel(model, D, 1, rung).combine(a);
+/** Metric previews: the default specimen drawn the way each metric sees it. */
+const METRIC_JOBS: { key: MetricId; make: () => Thumb }[] = (() => {
+  const base = () => {
+    const q = buildModel("tworod", SEED, D, 1).combine(0.85);
+    return { q, beta: betaForBV(sortedCopy(q), bvOf("tworod")) };
+  };
+  const plain = (planes: boolean) => () => {
+    const { q, beta } = base();
+    const vs = new VolumeScene(D, { dist: 3.9 });
+    vs.setQ(q);
+    vs.set({ uBeta: beta, uSteps: 260 });
+    if (planes) vs.scene.add(planeOutline(0, 0.6, 0x16181d, 0.9, 0.012));
+    else vs.scene.add(planeOutline(0, 0.6, 0x16181d, 0.9, 0.012), coronalOutline(0, 0.6, 0x16181d, 0.4, 0.01));
+    return vs;
+  };
+  const thick = (fg: 0 | 1) => () => {
+    const { q, beta } = base();
+    const bone = binarize(q, beta);
+    const max = fg ? 0.5 : 1.7;
+    const lt = smoothInPhase(localThickness(bone, D, fg), bone, fg, D).map((v) => (v * VOX_MM) / max);
+    const vs = new VolumeScene(D, { dist: 4.2, ramp: fg ? TH_RAMP : SP_RAMP });
+    vs.setQ(q);
+    vs.setLT(lt);
+    vs.set({ uBeta: beta, uMode: 1, uPhase: fg ? 1 : -1, uSteps: 260 });
+    return vs;
+  };
+  return [
+    { key: "bv-tv", make: plain(true) },
+    { key: "conn-d", make: plain(false) },
+    { key: "tb-th", make: thick(1) },
+    { key: "tb-sp", make: thick(0) },
+    {
+      key: "da",
+      make: () => {
+        const q = buildModel("tworod", SEED, D, 3.2).combine(0.85);
+        const vs = new VolumeScene(D, { dist: 3.9 });
         vs.setQ(q);
-        setSorted(sortedCopy(q));
-      });
+        vs.set({ uBeta: betaForBV(sortedCopy(q), 0.18), uSteps: 260 });
+        return vs;
+      },
     },
-    [vs, model, rung, a],
-    60
-  );
-  useEffect(() => {
-    if (vs && sorted) vs.set({ uBeta: betaForBV(sorted, bv) });
-  }, [vs, sorted, bv]);
-  useEffect(() => {
-    if (!seen) return;
-    for (const m of LIBRARY)
-      schedule(() => {
-        // built and dropped here, not cached: seven models held at once is most of the page's memory
-        const q = buildModel(m.id, SEED, D, 1).combine(0.85) as QField;
-        const typical = MODELS.find((x) => x.id === m.id)!.bv;
-        setThumbs((p) => ({ ...p, [m.id]: thumb(q, betaForBV(sortedCopy(q), typical)) }));
-      });
-  }, [seen]);
+    {
+      key: "ef",
+      make: () => {
+        const q = buildModel("tworod", SEED, D, 2.2).combine(0.85);
+        const beta = betaForBV(sortedCopy(q), bvOf("tworod"));
+        const F = new FieldScene(D, false);
+        buildNematic(F, q, binarize(q, beta), D, beta, false);
+        F.camera.position.multiplyScalar(0.95);
+        return F;
+      },
+    },
+    {
+      key: "p2",
+      make: () => {
+        // strut order by depth: ellipsoids grow from sphere (random) to tall (ordered), ivory to gold
+        const scene = new THREE.Scene();
+        scene.add(new THREE.HemisphereLight(0xffffff, 0x625a50, 1.1));
+        const key = new THREE.DirectionalLight(0xffffff, 2.2);
+        key.position.set(-1, 2.2, 1.4);
+        scene.add(key);
+        const ivory = new THREE.Color("#ece6d8");
+        const gold = new THREE.Color("#c8902e");
+        const geo = new THREE.SphereGeometry(1, 48, 32);
+        const n = 4;
+        for (let i = 0; i < n; i++) {
+          const t = i / (n - 1);
+          const q = 0.9 * t; // 2 x P2 for P2 0 .. 0.45
+          const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: ivory.clone().lerp(gold, t), roughness: 0.5, metalness: 0.15 }));
+          m.scale.set(0.2 * Math.sqrt(1 - q * 0.5), 0.2 * Math.sqrt(1 + 2 * q), 0.2 * Math.sqrt(1 - q * 0.5));
+          m.position.x = (i - (n - 1) / 2) * 0.5;
+          scene.add(m);
+        }
+        const camera = new THREE.PerspectiveCamera(26, 1, 0.05, 50);
+        camera.position.set(0.3, 0.55, 4.2);
+        camera.lookAt(0, 0, 0);
+        return { scene, camera };
+      },
+    },
+  ];
+})();
 
-  // link census of the strut models: how much of the network is transverse, by count and by strut volume
-  const links = useMemo(() => (vs ? getModel(model, D, 1, rung).links : undefined), [vs, model, rung, sorted]);
-  const volT = links ? links.volT / (links.volV + links.volO + links.volT) : null;
+function Metric({ id }: { id: MetricId }) {
+  switch (id) {
+    case "bv-tv":
+      return <BVPanel />;
+    case "conn-d":
+      return <ConnPanel />;
+    case "tb-th":
+      return <ThicknessPanel kind="th" />;
+    case "tb-sp":
+      return <ThicknessPanel kind="sp" />;
+    case "da":
+      return <DAPanel />;
+    case "ef":
+      return <EFPanel />;
+    case "p2":
+      return (
+        <div className="ws-wide">
+          <FactorialPaper num="" />
+        </div>
+      );
+  }
+}
+
+export function Explore() {
+  const [spec, setSpec] = useState<SpecimenChoice>(DEFAULT_SPECIMEN);
+  const [metric, setMetric] = useState<MetricId>("bv-tv");
+  const thumbs = useThumbs(SPEC_JOBS, 400);
+  const mthumbs = useThumbs(METRIC_JOBS, 900);
+  const usesSpecimen = metric !== "p2";
 
   return (
-    <section id="models" className="og-row wide">
-      <figure className="og-fig">
-        <div ref={ref} className="models">
-          <div className="fig aspect-square models-view">
-            <Viewer view={vs} alt="Selected specimen model" />
-          </div>
-          <div className="models-grid" role="radiogroup" aria-label="Specimen model">
-            {LIBRARY.map((m) => {
-              const info = MODELS.find((x) => x.id === m.id)!;
-              return (
+    <div className="ws-app">
+      <header className="ws-top">
+        <h1>Interactive Trabecular Bone Morphometry Sandbox</h1>
+      </header>
+
+      <div className={`ws ${metric === "p2" ? "ws-p2" : ""}`}>
+        <nav className="ws-nav" aria-label="Specimen">
+          <section className={usesSpecimen ? "" : "off"}>
+            <h4 className="ws-h">Specimen</h4>
+            <div className="ws-lib" role="radiogroup" aria-label="Specimen lattice">
+              {LIBRARY.map((m) => (
                 <button
                   key={m.id}
                   type="button"
                   role="radio"
-                  aria-checked={model === m.id}
-                  title={info.note}
-                  className={model === m.id ? "on" : ""}
-                  onClick={() => setSpec({ ...spec, model: m.id, bv: info.bv })}
+                  aria-checked={spec.model === m.id}
+                  disabled={!usesSpecimen}
+                  title={MODELS.find((x) => x.id === m.id)!.note}
+                  className={spec.model === m.id ? "on" : ""}
+                  onClick={() => setSpec({ ...spec, model: m.id, bv: MODELS.find((x) => x.id === m.id)!.bv })}
                 >
-                  <span className="models-img">{thumbs[m.id] ? <img src={thumbs[m.id]} alt="" /> : <i />}</span>
-                  <span className="models-name">{m.name}</span>
+                  <span className="ws-lib-img">{thumbs[m.id] ? <img src={thumbs[m.id]} alt="" /> : <i />}</span>
+                  <span className="ws-lib-name">{m.name}</span>
                 </button>
-              );
-            })}
+              ))}
+            </div>
+            {spec.model === "braced" && usesSpecimen && (
+              <label className="ws-rung">
+                <span>
+                  Rung retention <b>{Math.round(spec.rung * 100)} %</b>
+                </span>
+                <input type="range" min={0} max={1} step={0.05} value={spec.rung} onChange={(e) => setSpec({ ...spec, rung: +e.target.value })} />
+              </label>
+            )}
+          </section>
+
+        </nav>
+
+        <div className="ws-mnav">
+          <h4 className="ws-h">Metric</h4>
+          <div className="ws-lib" role="tablist" aria-label="Metric">
+            {METRIC_LIST.map((m) => (
+              <button key={m.id} type="button" role="tab" aria-selected={metric === m.id} title={m.name} className={metric === m.id ? "on" : ""} onClick={() => setMetric(m.id)}>
+                <span className="ws-lib-img">{mthumbs[m.id] ? <img src={mthumbs[m.id]} alt="" /> : <i />}</span>
+                <span className="ws-lib-name">{m.sym}</span>
+              </button>
+            ))}
           </div>
         </div>
-        {(model === "braced" || links) && (
-          <Controls>
-          {model === "braced" && (
-            <Slider label="Rung retention" hint="transverse links kept" value={rung} min={0} max={1} step={0.05} onChange={(v) => setSpec({ ...spec, rung: v })} format={(v) => `${Math.round(v * 100)} %`} />
-          )}
-          {links && (
-            <Readouts>
-              <Readout label="Vertical links" value={String(links.vertical)} />
-              <Readout label="Oblique links" value={String(links.oblique)} />
-              <Readout label="Transverse links" value={String(links.transverse)} />
-              <Readout label="Transverse volume" value={volT !== null ? (volT * 100).toFixed(0) : "-"} unit="%" accent />
-            </Readouts>
-          )}
-          </Controls>
+
+        <SpecimenCtx.Provider value={spec}>
+          <Metric key={metric} id={metric} />
+        </SpecimenCtx.Provider>
+
+        {usesSpecimen && (
+          <p className="ws-stamp">64³ voxels · 65 µm · 4.16 mm field</p>
         )}
-      </figure>
-      <header className="og-head">
-        <h3 className="og-h">
-          <span className="secnum">1.1</span>Synthetic specimens
-        </h3>
-        <p className="og-abbr">64³ voxels · 65 µm · 4.16 mm cube</p>
-      </header>
-      <div className="og-text prose">
-        <p>
-          Every specimen is a procedural field thresholded into bone, with no imaging noise. The strut models join jittered nodes about 1.1 mm apart
-          with tapered rods and differ only in which links are kept and how thick they are. The selection here carries through every figure below.
-        </p>
       </div>
-    </section>
-  );
-}
-
-/* ================================ page ================================ */
-
-export function Explore() {
-  const [spec, setSpec] = useState<SpecimenChoice>(DEFAULT_SPECIMEN);
-  return (
-    <main className="page doc xpaper">
-      <header className="titleblock">
-        <h1>Interactive Trabecular Bone Morphometry Sandbox</h1>
-      </header>
-
-      <section className="psec">
-        <h2>
-          <span className="secnum">1</span>Specimen
-        </h2>
-        <ModelsRow spec={spec} setSpec={setSpec} />
-      </section>
-
-      <SpecimenCtx.Provider value={spec}>
-        <section className="psec">
-          <h2>
-            <span className="secnum">2</span>Standard parameters
-          </h2>
-          <BVPanel num="2.1" fig={2} />
-          <ConnPanel num="2.2" fig={3} />
-          <ThicknessPanel kind="th" num="2.3" fig={4} />
-          <ThicknessPanel kind="sp" num="2.4" fig={5} />
-          <DAPanel num="2.5" fig={6} />
-          <EFPanel num="2.6" fig={7} />
-        </section>
-      </SpecimenCtx.Provider>
-
-      <section className="psec">
-        <h2>
-          <span className="secnum">3</span>New metrics
-        </h2>
-        <FactorialPaper num="3.1" />
-      </section>
-
-      <section className="psec refs-sec">
-        <h2>References</h2>
-        <ol className="refs">
-          {REFERENCES.map((r, i) => (
-            <li key={i}>{r}</li>
-          ))}
-        </ol>
-      </section>
-    </main>
+    </div>
   );
 }
