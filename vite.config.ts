@@ -10,6 +10,8 @@ const __dirname = path.dirname(__filename);
 
 // https://vite.dev/config/
 export default defineConfig({
+  // relative asset paths so the build works under a subpath (github.io/bone-sandbox/)
+  base: "./",
   plugins: [react(), tailwindcss(), viteSingleFile()],
   resolve: {
     alias: {
