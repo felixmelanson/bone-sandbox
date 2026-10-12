@@ -1,15 +1,17 @@
 /* =====================================================================
    The manuscript page, three refinements of the same scroll.
    ---------------------------------------------------------------------
-   Same content, same figures, same numbers. Only the arrangement of
-   text, figure and margin changes:
+   Content is identical: title, abstract, section 1 the specimen, section
+   2 the six live figures, references. Only the arrangement changes.
 
-     A  journal      one column of prose, figures outdented wider
-     B  plate atlas  each parameter a ruled plate, notes in two columns
-     C  research note  note on the left, figure on the right, numbered margin
+     A  journal        one column: heading, prose, then the figure
+     B  plate          heading across, figure left, note right
+     C  research note  number in the margin, note left, figure right
 
-   Nothing here is an app: no cards, no panels, no chrome. Plain white,
-   one ink, one accent, hairlines, and the specimen at real size.
+   Rows are flex lines on the existing markup: the heading takes the
+   first line, then the figure and the note share the second, both
+   aligned to the top. No element is allowed to grow past its figure
+   width, and the note keeps a sane measure.
    ===================================================================== */
 
 .ms {
@@ -19,16 +21,18 @@
   --mut2: #9a9aa3;
   --line: #e8e8ec;
   --acc: #b3244f;
+  --figw: 600px;
+  --gap: 52px;
   --ui: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --serif: "Source Serif 4", "Source Serif Pro", Georgia, serif;
   background: #fff;
   color: var(--ink);
-  /* the tailwind utility greys inside the figures, brought onto one scale */
 }
 .ms,
 .ms * {
   font-family: var(--ui);
 }
+/* the tailwind greys inside the figures, brought onto one scale */
 .ms .text-stone-500,
 .ms .text-stone-600,
 .ms .text-stone-700 {
@@ -61,22 +65,17 @@
 .ms h1 {
   font-family: var(--serif);
   font-weight: 600;
-  line-height: 1.1;
+  line-height: 1.12;
   letter-spacing: -0.02em;
   text-wrap: balance;
 }
-.ms-title {
-  position: relative;
-}
 .ms-tag {
-  font-family: var(--ui);
   font-size: 10.5px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--mut2);
 }
 .ms-byline {
-  margin-top: 12px;
   font-family: var(--ui);
   font-size: 13.5px;
   color: var(--mut);
@@ -96,7 +95,7 @@
   color: var(--mut);
 }
 
-/* -------------------------------- sections ---------------------------- */
+/* -------------------------------- prose ------------------------------- */
 
 .ms-h2 {
   font-family: var(--serif);
@@ -107,11 +106,10 @@
   color: var(--mut2);
   font-weight: 400;
 }
-
 .ms .prose {
   font-family: var(--serif);
   font-size: 16.5px;
-  line-height: 1.66;
+  line-height: 1.65;
   color: var(--ink);
 }
 .ms .prose p,
@@ -123,8 +121,8 @@
   margin-top: 13px;
 }
 .ms .eq {
-  margin: 16px 0;
-  padding: 2px 0 2px 16px;
+  margin: 15px 0;
+  padding: 2px 0 2px 15px;
   border-left: 1.5px solid var(--ink);
   background: none;
   font-family: var(--serif);
@@ -135,77 +133,122 @@
   font-family: var(--serif);
 }
 .ms .refs {
-  max-width: none;
+  max-width: 82ch;
   padding-left: 1.5em;
   font-size: 14.5px;
-  line-height: 1.62;
+  line-height: 1.6;
   color: var(--ink2);
 }
 .ms .refs li + li {
   margin-top: 8px;
 }
 
-/* -------------------------- metric rows (shared) ----------------------- */
+/* ============================== one row =============================== */
+/* heading across, then the figure and the note on one line, top aligned */
 
-/* the numbered caption is opt-in: only the manuscript shows it */
-.og-cap {
-  display: none;
+.ms .og-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  column-gap: var(--gap);
+  row-gap: 22px;
+  padding: 30px 0 46px;
+  border-bottom: 1px solid var(--line);
 }
-.ms .og-cap {
-  display: block;
-  margin-top: 16px;
-  font-family: var(--ui);
-  font-size: 12.5px;
-  line-height: 1.6;
-  color: var(--ink2);
-  text-align: left;
+.ms .og-row:last-child {
+  border-bottom: 0;
 }
-.ms .og-cap b {
-  font-weight: 600;
-  color: var(--ink);
+.ms .og-head {
+  flex: 1 0 100%;
+}
+.ms .og-text {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.ms .og-fig {
+  flex: 0 0 auto;
+  width: var(--figw);
+  max-width: 100%;
+  margin: 0;
 }
 .ms .og-h {
   font-family: var(--serif);
+  font-size: 21px;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 .ms .og-h .secnum {
   font-family: var(--ui);
-  font-size: 0.55em;
+  font-size: 12px;
   font-weight: 500;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   color: var(--mut2);
-  vertical-align: 0.35em;
+  margin-right: 12px;
 }
 .ms .og-abbr {
-  font-family: var(--ui);
+  margin-top: 6px;
   font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--mut);
 }
-/* controls sit on a hairline under the figure, never in a box */
+/* the numbered caption, only on the manuscript pages */
+.og-cap {
+  display: none;
+}
+.ms .og-cap {
+  display: block;
+  margin-top: 15px;
+  font-size: 12.5px;
+  line-height: 1.58;
+  color: var(--ink2);
+}
+.ms .og-cap b {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* ------------------------------- controls ----------------------------- */
+
 .ms .controls {
-  margin-top: 20px;
-  padding-top: 16px;
-  gap: 12px;
+  margin-top: 18px;
+  padding-top: 14px;
+  gap: 11px;
   border-top: 1px solid var(--line);
 }
 .ms .controls dt {
-  font-family: var(--ui);
-  font-size: 10.5px;
+  font-size: 10px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--mut);
 }
 .ms .controls dd {
-  font-size: 16px;
+  font-size: 15px;
   color: var(--ink);
 }
-.ms .controls dd .text-\\[\\#b3244f\\] {
+.ms .controls dd .text-\[\#b3244f\] {
   color: var(--acc);
 }
+/* the slider is a control, not a progress bar: it keeps a control's width */
+.ms .slider-wrap {
+  max-width: 400px;
+}
+/* standalone actions read as links; the segmented control keeps its pills */
+.ms .controls button.rounded-full:not([role="radio"]) {
+  border: 0;
+  border-radius: 0;
+  padding: 2px 0;
+  font-size: 12.5px;
+  color: var(--ink2);
+  text-decoration: underline;
+  text-decoration-color: var(--mut2);
+  text-underline-offset: 3px;
+}
+
+/* ------------------------------- figures ------------------------------ */
+/* every figure: flat white, hairline frames, nothing stretched */
+
 .ms .fig.frame2d {
   width: 100%;
   margin: 0;
@@ -213,33 +256,82 @@
 .ms .fig.aspect-square:not(.frame2d) {
   padding: 0;
 }
-/* figure rows: the thickness row is a bar, the specimen, the section, the schematic */
-.ms .fig-row {
-  grid-template-columns: auto minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr);
-  gap: 16px;
-  align-items: start;
-}
-.ms .fig-trio {
-  gap: 16px;
-  align-items: start;
-}
 .ms .fig-l {
   margin-top: 8px;
   font-size: 10px;
   letter-spacing: 0.16em;
   color: var(--mut);
 }
-.ms .fig-title {
-  margin-top: 12px;
-  font-size: 14.5px;
-  color: var(--ink);
+.ms .fig-trio {
+  gap: 14px;
+  align-items: start;
 }
+.ms .fig-row {
+  gap: 8px 14px;
+  align-items: start;
+}
+/* rows of two sections: the specimen on the left, spanning the height of its
+   two sections stacked on the right, so the three tiles read as one plate */
+.ms #bv-tv .fig-trio,
+.ms #conn-d .fig-trio {
+  grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr);
+  grid-template-rows: auto auto;
+}
+.ms #bv-tv .fig-trio > :nth-child(1),
+.ms #conn-d .fig-trio > :nth-child(1) {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+}
+.ms #bv-tv .fig-trio > :nth-child(2),
+.ms #conn-d .fig-trio > :nth-child(2) {
+  grid-column: 2;
+  grid-row: 1;
+}
+.ms #bv-tv .fig-trio > :nth-child(3),
+.ms #conn-d .fig-trio > :nth-child(3) {
+  grid-column: 2;
+  grid-row: 2;
+}
+/* DA keeps three columns: the fabric view with the MIL and SVD estimates */
+.ms #da .fig-trio {
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr);
+}
+/* thickness rows: colour bar, specimen, section over the sphere schematic */
+.ms #tb-th .fig-row,
+.ms #tb-sp .fig-row {
+  grid-template-columns: auto minmax(0, 2.2fr) minmax(0, 1fr);
+  grid-template-rows: auto auto;
+}
+.ms #tb-th .fig-row > :nth-child(1),
+.ms #tb-sp .fig-row > :nth-child(1) {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  /* the bar spans the specimen's height rather than the section's */
+  height: auto !important;
+  align-self: stretch;
+}
+.ms #tb-th .fig-row > :nth-child(2),
+.ms #tb-sp .fig-row > :nth-child(2) {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+.ms #tb-th .fig-row > :nth-child(3),
+.ms #tb-sp .fig-row > :nth-child(3) {
+  grid-column: 3;
+  grid-row: 1;
+}
+.ms #tb-th .fig-row > :nth-child(4),
+.ms #tb-sp .fig-row > :nth-child(4) {
+  grid-column: 3;
+  grid-row: 2;
+}
+/* the specimen library: the chosen model beside its thumbnails */
 .ms .models {
-  gap: 28px;
+  gap: 24px;
   align-items: start;
 }
 .ms .models-grid {
-  gap: 14px 10px;
+  gap: 12px 8px;
 }
 .ms .models-img {
   border-radius: 0;
@@ -252,138 +344,135 @@
 .ms .models-grid button:focus-visible .models-img {
   outline-color: var(--ink);
 }
+.ms .models-name {
+  margin-top: 6px;
+  font-size: 10px;
+  color: var(--mut);
+}
 .ms .models-grid button.on .models-name {
   color: var(--ink);
+  font-weight: 600;
 }
-.ms .models-name {
-  color: var(--mut);
+.ms #ef .og-fig .grid-cols-2 {
+  gap: 12px;
 }
 
 /* =====================================================================
-   A · journal — one column of prose, figures outdented to the full
-   measure, title and abstract centred, everything on one axis.
+   A · journal — one column. Heading, prose, then the figure at the same
+   measure. Figures are 620 px: the width of the text, nothing more.
    ===================================================================== */
 
+.ms-a {
+  --figw: 620px;
+}
 .ms-a .ms-wrap {
-  max-width: 1200px;
+  max-width: 700px;
   margin: 0 auto;
-  padding: 0 36px 120px;
+  padding: 0 40px 120px;
 }
 .ms-a .ms-title {
-  max-width: 760px;
-  margin: 0 auto;
-  padding: 84px 0 0;
+  padding: 92px 0 0;
   text-align: center;
 }
 .ms-a h1 {
-  margin-top: 18px;
-  font-size: clamp(32px, 3.8vw, 46px);
+  margin-top: 16px;
+  font-size: clamp(30px, 3.4vw, 42px);
+}
+.ms-a .ms-byline {
+  margin-top: 14px;
 }
 .ms-a .ms-abstract {
-  max-width: 660px;
-  margin: 34px auto 0;
+  margin-top: 38px;
   padding-top: 20px;
   border-top: 1px solid var(--ink);
   text-align: left;
 }
 .ms-a .ms-abstract-h {
-  margin-bottom: 10px;
+  margin-bottom: 9px;
 }
 .ms-a .ms-sec {
-  padding-top: 72px;
+  padding-top: 74px;
 }
 .ms-a .ms-sec > .ms-h2 {
-  max-width: 660px;
-  margin: 0 auto;
-  padding-bottom: 6px;
-  font-size: 25px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--ink);
+  font-size: 24px;
 }
 .ms-a .ms-n {
-  margin-right: 16px;
-  font-size: 17px;
+  margin-right: 14px;
+  font-size: 16px;
 }
+/* one column: heading, prose, figure, in that order */
 .ms-a .og-row {
-  display: block;
-  padding: 0;
-  border: 0;
-}
-.ms-a .og-head,
-.ms-a .og-text {
-  max-width: 660px;
-  margin-left: auto;
-  margin-right: auto;
+  flex-direction: column;
+  align-items: stretch;
+  row-gap: 0;
 }
 .ms-a .og-head {
-  padding-top: 40px;
-}
-.ms-a .og-h {
-  font-size: 21px;
-}
-.ms-a .og-abbr {
-  margin-top: 6px;
+  order: 1;
+  flex: 0 0 auto;
 }
 .ms-a .og-text {
-  padding-top: 4px;
+  order: 2;
+  padding-top: 16px;
+  flex: 0 0 auto;
+}
+.ms-a .og-fig {
+  order: 3;
+  width: 100%;
+  margin-top: 28px;
 }
 .ms-a .prose p,
 .ms-a .prose li {
   text-align: justify;
   hyphens: auto;
 }
-.ms-a .og-fig {
-  margin: 30px 0 46px;
-}
-.ms-a .og-cap {
-  max-width: 660px;
-  margin-left: auto;
-  margin-right: auto;
-}
 
 /* =====================================================================
-   B · plate atlas — every parameter a ruled plate: heading on the rule,
-   the figure at full width, the notes in two columns underneath.
+   B · plate — heading across the measure, the plate on the left and the
+   note on the right, both starting on the same line.
    ===================================================================== */
 
+.ms-b {
+  --figw: 600px;
+  --gap: 54px;
+}
 .ms-b .ms-wrap {
-  max-width: 1280px;
+  max-width: 1240px;
   margin: 0 auto;
   padding: 0 40px 120px;
 }
 .ms-b .ms-title {
-  display: grid;
-  grid-template-columns: 120px minmax(0, 1fr);
-  gap: 34px;
-  align-items: start;
-  padding: 72px 0 44px;
-  border-bottom: 2px solid var(--ink);
-}
-.ms-b .ms-tag {
-  padding-top: 10px;
+  padding: 72px 0 40px;
+  border-bottom: 1px solid var(--line);
 }
 .ms-b h1 {
-  font-size: clamp(32px, 3.4vw, 44px);
-  max-width: 22ch;
+  max-width: 24ch;
+  font-size: clamp(30px, 3vw, 40px);
+}
+.ms-b .ms-byline {
+  margin-top: 14px;
 }
 .ms-b .ms-abstract {
-  max-width: 88ch;
-  margin-top: 22px;
-  padding-left: 18px;
-  border-left: 1px solid var(--line);
+  max-width: 74ch;
+  margin-top: 26px;
+  padding-top: 20px;
+  border-top: 1px solid var(--ink);
 }
 .ms-b .ms-abstract-h {
-  margin-bottom: 8px;
+  margin-bottom: 9px;
 }
 .ms-b .ms-sec {
-  padding-top: 64px;
+  padding-top: 60px;
 }
 .ms-b .ms-sec > .ms-h2 {
   display: flex;
   align-items: baseline;
-  gap: 18px;
+  gap: 16px;
   padding: 12px 0 10px;
   border-top: 2px solid var(--ink);
   font-family: var(--ui);
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -392,262 +481,149 @@
   font-size: 12px;
   letter-spacing: 0.06em;
 }
-.ms-b .ms-sec > .ms-h2::after {
-  content: "";
-  flex: 1 1 auto;
-  height: 1px;
-  background: var(--line);
-}
 .ms-b .og-row {
-  display: block;
-  padding: 34px 0 46px;
-  border-top: 1px solid var(--line);
-  border-bottom: 0;
-}
-.ms-b .og-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 28px;
+  padding-top: 34px;
 }
 .ms-b .og-h {
-  font-size: 27px;
-}
-.ms-b .og-fig {
-  margin: 26px 0 0;
+  font-size: 24px;
 }
 .ms-b .og-text {
-  max-width: 1120px;
-  margin-top: 30px;
-  columns: 2;
-  column-gap: 60px;
-}
-.ms-b .og-text .eq {
-  break-inside: avoid;
-}
-.ms-b .og-cap {
-  max-width: 1120px;
-}
-.ms-b .models {
-  gap: 40px;
-}
-.ms-b .fig-l {
-  margin-top: 10px;
+  order: 2;
+  padding-top: 2px;
 }
 
 /* =====================================================================
    C · research note — the number in the margin, the note on the left,
-   the figure on the right, hairline between rows. The arrangement the
-   page already had, on a grid that holds.
+   the figure on the right. Same content, read as a note.
    ===================================================================== */
 
+.ms-c {
+  --figw: 552px;
+  --gap: 46px;
+}
 .ms-c .ms-wrap {
-  max-width: 1320px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 0 40px 120px;
 }
 .ms-c .ms-title {
-  display: grid;
-  grid-template-columns: 56px minmax(0, 1fr) minmax(0, 360px);
-  gap: 0 36px;
-  align-items: start;
-  padding: 72px 0 40px;
-}
-.ms-c .ms-tag {
-  grid-column: 2;
-  grid-row: 1;
+  padding: 80px 0 36px;
+  border-bottom: 1px solid var(--ink);
 }
 .ms-c h1 {
-  grid-column: 2;
-  grid-row: 2;
-  margin-top: 16px;
-  font-size: clamp(28px, 2.9vw, 38px);
+  max-width: 26ch;
+  margin-top: 14px;
+  font-size: clamp(28px, 2.8vw, 38px);
 }
 .ms-c .ms-byline {
-  grid-column: 3;
-  grid-row: 1;
-  margin-top: 0;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--line);
+  margin-top: 14px;
 }
 .ms-c .ms-abstract {
-  grid-column: 3;
-  grid-row: 2 / span 2;
-  font-size: 14.5px;
-  line-height: 1.6;
+  max-width: 68ch;
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
 }
 .ms-c .ms-abstract-h {
-  margin-bottom: 9px;
+  margin-bottom: 8px;
 }
 .ms-c .ms-sec {
-  padding-top: 30px;
+  padding-top: 54px;
 }
 .ms-c .ms-sec > .ms-h2 {
   position: relative;
-  padding: 0 0 14px 52px;
+  padding: 0 0 12px 52px;
   border-bottom: 1px solid var(--ink);
   font-size: 22px;
 }
 .ms-c .ms-sec > .ms-h2 .ms-n {
   position: absolute;
   left: 0;
-  top: 4px;
-  font-family: var(--ui);
+  top: 3px;
   font-size: 12px;
   letter-spacing: 0.1em;
 }
 .ms-c .og-row {
   position: relative;
-  display: grid;
-  grid-template-columns: 52px minmax(0, 1fr) minmax(0, 1.55fr);
-  grid-template-rows: auto 1fr;
-  column-gap: 36px;
-  padding: 34px 0 44px;
-  border-bottom: 1px solid var(--line);
+  padding-left: 52px;
 }
 .ms-c .og-head {
-  grid-column: 2;
-  grid-row: 1;
+  position: relative;
+}
+.ms-c .og-head .secnum {
+  position: absolute;
+  left: -52px;
+  top: 3px;
+  width: 40px;
+  margin-right: 0;
+  text-align: right;
+}
+/* note first, figure second: the order is set here, not in the markup */
+.ms-c .og-text {
+  order: 2;
+  flex: 0 1 472px;
+  padding-top: 2px;
 }
 .ms-c .og-fig {
-  grid-column: 3;
-  grid-row: 1 / span 2;
-  align-self: start;
-}
-.ms-c .og-text {
-  grid-column: 2;
-  grid-row: 2;
-  padding-top: 14px;
+  order: 3;
 }
 .ms-c .og-h {
   font-size: 21px;
 }
-.ms-c .og-h .secnum {
-  position: absolute;
-  left: 0;
-  top: 38px;
-  width: 52px;
-  padding-top: 0;
-  font-size: 12px;
-  letter-spacing: 0.1em;
-  vertical-align: baseline;
-}
-.ms-c .og-abbr {
-  margin-top: 7px;
-}
-.ms-c .og-cap {
-  margin-top: 14px;
-}
-.ms-c .fig-trio {
-  grid-template-columns: minmax(0, 2.1fr) minmax(0, 1fr) minmax(0, 1fr);
-}
-/* the thickness row uses a narrower figure column here: the bar and the specimen on the
-   left, the section and the sphere schematic stacked on the right */
-.ms-c .fig-row {
-  grid-template-columns: auto minmax(0, 1.6fr) minmax(0, 1fr);
-}
-.ms-c .fig-row > :nth-child(1),
-.ms-c .fig-row > :nth-child(2) {
-  grid-row: 1 / span 2;
-}
-.ms-c .fig-row > :nth-child(3) {
-  grid-column: 3;
-  grid-row: 1;
-}
-.ms-c .fig-row > :nth-child(4) {
-  grid-column: 3;
-  grid-row: 2;
-}
-.ms-c .models {
-  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
-  gap: 20px;
-}
-.ms-c .models-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px 8px;
-}
-.ms-c .refs {
-  max-width: 88ch;
-}
 
-/* ------------------------------ narrow ------------------------------- */
+/* ------------------------------ narrow -------------------------------- */
 
 @media (max-width: 1080px) {
-  .ms-b .ms-title,
-  .ms-c .ms-title {
-    grid-template-columns: minmax(0, 1fr);
+  .ms-b,
+  .ms-c {
+    --figw: 100%;
   }
-  .ms-c h1,
-  .ms-c .ms-tag,
-  .ms-c .ms-byline,
-  .ms-c .ms-abstract {
-    grid-column: 1;
-    grid-row: auto;
+  .ms-b .og-fig,
+  .ms-c .og-fig {
+    order: 4;
+    width: 100%;
+    max-width: 640px;
+    margin-top: 24px;
   }
-  .ms-b .og-text {
-    columns: 1;
+  .ms-b .og-text,
+  .ms-c .og-text {
+    flex: 1 1 100%;
+    max-width: 640px;
   }
   .ms-c .og-row {
-    grid-template-columns: 52px minmax(0, 1fr);
-    grid-template-rows: auto auto auto;
-  }
-  .ms-c .og-head {
-    grid-column: 2;
-    grid-row: 1;
-  }
-  .ms-c .og-text {
-    grid-column: 2;
-    grid-row: 2;
-  }
-  .ms-c .og-fig {
-    grid-column: 2;
-    grid-row: 3;
-    margin-top: 22px;
-  }
-  .ms-c .fig-trio {
-    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr);
+    padding-left: 52px;
   }
 }
 
 @media (max-width: 860px) {
-  .ms .fig-row {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
   .ms-a .ms-wrap,
   .ms-b .ms-wrap,
   .ms-c .ms-wrap {
-    padding-left: 20px;
-    padding-right: 20px;
+    padding-left: 22px;
+    padding-right: 22px;
   }
   .ms-a .ms-title,
   .ms-b .ms-title,
   .ms-c .ms-title {
-    padding-top: 48px;
+    padding-top: 52px;
   }
-  .ms-b .ms-title {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0;
-  }
-  .ms-c .og-row {
-    grid-template-columns: minmax(0, 1fr);
-  }
+  .ms-c .og-row,
   .ms-c .ms-sec > .ms-h2 {
-    padding-left: 0;
+    padding-left: 34px;
   }
+  .ms-c .og-head .secnum,
   .ms-c .ms-sec > .ms-h2 .ms-n {
-    position: static;
-    margin-right: 10px;
-  }
-  .ms-c .og-head,
-  .ms-c .og-text,
-  .ms-c .og-fig {
-    grid-column: 1;
-  }
-  .ms-c .og-h .secnum {
     position: static;
     width: auto;
     margin-right: 10px;
-    vertical-align: baseline;
+  }
+  .ms .fig-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .ms .fig-row > * {
+    grid-column: auto !important;
+    grid-row: auto !important;
+    align-self: auto;
   }
   .ms .models {
     grid-template-columns: minmax(0, 1fr);

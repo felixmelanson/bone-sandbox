@@ -6,9 +6,14 @@ Three refinements of the same content live in `paper.css`, one class each:
 
 | | class | arrangement |
 |---|---|---|
-| **A** journal | `.ms-a` | one column of prose at 660 px, figures outdented to the full 1128 px, title and abstract centred |
-| **B** plate atlas | `.ms-b` | each parameter is a ruled plate: heading on the rule, figure full width, notes in two columns beneath |
-| **C** research note | `.ms-c` | the number in the margin, the note on the left (52 px gutter + measure), the figure on the right, hairline between rows |
+| **A** journal | `.ms-a` | one column: heading, prose, then the figure at the same 620 px measure |
+| **B** plate | `.ms-b` | heading across the measure, plate on the left, note on the right |
+| **C** research note | `.ms-c` | number in a 52 px margin, note on the left, figure on the right |
+
+All three set figure width with `--figw` (620 / 600 / 552 px) and use the same row
+flex line: the heading takes the first line, then the figure and the note share the
+second, both top aligned. `order` on `.og-text` and `.og-fig` decides which side the
+figure lands on, so the markup stays in one order and Explore keeps its float layout.
 
 Content is composed once in `index.tsx`; the figures are the same panel components the
 Explore tab uses, so nothing is duplicated and the numbers stay identical.

@@ -19,9 +19,9 @@ import { ABSTRACT, META, REFERENCES } from "../text";
 export type Variant = "a" | "b" | "c";
 
 const TAG: Record<Variant, string> = {
-  a: "Layout A · one column, figures outdented",
-  b: "Layout B · plates, notes in two columns",
-  c: "Layout C · note left, figure right",
+  a: "Layout A · one column: heading, prose, then the figure",
+  b: "Layout B · plate on the left, note on the right",
+  c: "Layout C · number in the margin, note left, figure right",
 };
 
 export function Paper({ variant = "a" }: { variant?: Variant }) {

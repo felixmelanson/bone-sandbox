@@ -157,7 +157,7 @@ export function Slider({
 }) {
   const id = useId();
   return (
-    <div className="block">
+    <div className="block slider-wrap">
       <span className="flex items-baseline justify-between gap-3 text-[13px] text-stone-700">
         <span id={id}>
           {label}
