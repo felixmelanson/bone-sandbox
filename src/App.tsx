@@ -3,19 +3,21 @@ import { FactorialSection } from "./factorial";
 import { Explore } from "./explore";
 import { Sandbox } from "./sandbox";
 import { Concepts } from "./concepts";
-import { Layouts } from "./layouts";
+import { Paper } from "./paper";
 import { Caveats, DecompositionSection, PhosphateSection, TwinsSection } from "./section5";
 import { TwoClocksSection } from "./twoclocks";
 import { ABSTRACT, INTRO, META, METHOD, REFERENCES, SPECIMEN } from "./text";
 
 /* =====================================================================
-   Tabs: the scrolling explorer (default), the interactive sandbox (one specimen, one 3-D view, pick
-   a metric), the results (section 5 figures), and the background text.
-   Only the active tab is mounted.
+   Tabs: three refinements of the manuscript page (default A), the scrolling explorer, the
+   interactive sandbox (one specimen, one 3-D view, pick a metric), the results (section 5
+   figures), and the background text. Only the active tab is mounted.
    ===================================================================== */
 
 const TABS = [
-  { id: "layouts", t: "Layouts" },
+  { id: "paper-a", t: "Paper A" },
+  { id: "paper-b", t: "Paper B" },
+  { id: "paper-c", t: "Paper C" },
   { id: "explore", t: "Explore" },
   { id: "sandbox", t: "Sandbox" },
   { id: "concepts", t: "Concepts" },
@@ -27,7 +29,7 @@ type Tab = (typeof TABS)[number]["id"];
 export default function App() {
   const read = (): Tab => {
     const h = location.hash.slice(1).split("?")[0];
-    return TABS.some((t) => t.id === h) ? (h as Tab) : "layouts";
+    return TABS.some((t) => t.id === h) ? (h as Tab) : "paper-a";
   };
   const [tab, setTab] = useState<Tab>(read);
   useEffect(() => {
@@ -52,7 +54,9 @@ export default function App() {
         </nav>
       </header>
 
-      {tab === "layouts" && <Layouts />}
+      {tab === "paper-a" && <Paper variant="a" />}
+      {tab === "paper-b" && <Paper variant="b" />}
+      {tab === "paper-c" && <Paper variant="c" />}
       {tab === "explore" && <Explore />}
       {tab === "sandbox" && <Sandbox />}
       {tab === "concepts" && <Concepts />}

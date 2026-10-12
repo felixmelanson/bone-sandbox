@@ -46,7 +46,7 @@ function thumb(q: QField, beta: number, R = 128) {
 
 /* ------------------------- 1.1 model library -------------------------- */
 
-function ModelsRow({ spec, setSpec }: { spec: SpecimenChoice; setSpec: (s: SpecimenChoice) => void }) {
+export function ModelsRow({ spec, setSpec }: { spec: SpecimenChoice; setSpec: (s: SpecimenChoice) => void }) {
   const [ref, seen] = useInView<HTMLDivElement>();
   const [vs, setVs] = useState<VolumeScene | null>(null);
   const [sorted, setSorted] = useState<Float32Array | null>(null);
@@ -132,6 +132,10 @@ function ModelsRow({ spec, setSpec }: { spec: SpecimenChoice; setSpec: (s: Speci
             </Readouts>
           )}
         </Controls>
+        <figcaption className="og-cap">
+          <b>Figure 1.</b> The model library at 64³ voxels and 65 µm. Struts are cut flat at the cube faces; the seven specimens differ only in which links
+          are kept and how thick they are. The selection carries through every figure below.
+        </figcaption>
       </figure>
       <div className="og-text prose">
         <p>

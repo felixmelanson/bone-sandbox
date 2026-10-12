@@ -98,6 +98,10 @@ export function Panel({
       </header>
       <figure className="og-fig" aria-label={`Figure ${fig}`}>
         {children}
+        {/* the numbered caption: shown by the manuscript pages, quiet elsewhere */}
+        <figcaption className="og-cap">
+          <b>Figure {fig}.</b> {t.caption}
+        </figcaption>
       </figure>
       <div className="og-text prose">{t.short ?? t.body}</div>
     </section>
