@@ -13,6 +13,9 @@ export default defineConfig({
   // relative asset paths so the build works under a subpath (github.io/bone-sandbox/)
   base: "./",
   plugins: [react(), tailwindcss(), viteSingleFile()],
+  // the Arena preview proxies this server under a hostname of its own
+  server: { host: true, allowedHosts: true },
+  preview: { host: true, allowedHosts: true },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src"),

@@ -3,6 +3,7 @@ import { FactorialSection } from "./factorial";
 import { Explore } from "./explore";
 import { Sandbox } from "./sandbox";
 import { Concepts } from "./concepts";
+import { Layouts } from "./layouts";
 import { Caveats, DecompositionSection, PhosphateSection, TwinsSection } from "./section5";
 import { TwoClocksSection } from "./twoclocks";
 import { ABSTRACT, INTRO, META, METHOD, REFERENCES, SPECIMEN } from "./text";
@@ -14,6 +15,7 @@ import { ABSTRACT, INTRO, META, METHOD, REFERENCES, SPECIMEN } from "./text";
    ===================================================================== */
 
 const TABS = [
+  { id: "layouts", t: "Layouts" },
   { id: "explore", t: "Explore" },
   { id: "sandbox", t: "Sandbox" },
   { id: "concepts", t: "Concepts" },
@@ -25,7 +27,7 @@ type Tab = (typeof TABS)[number]["id"];
 export default function App() {
   const read = (): Tab => {
     const h = location.hash.slice(1).split("?")[0];
-    return TABS.some((t) => t.id === h) ? (h as Tab) : "explore";
+    return TABS.some((t) => t.id === h) ? (h as Tab) : "layouts";
   };
   const [tab, setTab] = useState<Tab>(read);
   useEffect(() => {
@@ -50,6 +52,7 @@ export default function App() {
         </nav>
       </header>
 
+      {tab === "layouts" && <Layouts />}
       {tab === "explore" && <Explore />}
       {tab === "sandbox" && <Sandbox />}
       {tab === "concepts" && <Concepts />}
