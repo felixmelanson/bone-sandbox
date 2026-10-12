@@ -1,0 +1,1286 @@
+{
+ "cohort": "male Voyager right tibiae, production 10 um run (Morphometry II, otib 061fd93)",
+ "strata_mm": [
+  [
+   0.0,
+   0.5
+  ],
+  [
+   0.5,
+   1.0
+  ],
+  [
+   1.0,
+   1.5
+  ],
+  [
+   1.5,
+   2.0
+  ],
+  [
+   2.0,
+   2.5
+  ],
+  [
+   2.5,
+   3.0
+  ]
+ ],
+ "groups": [
+  {
+   "loading": "AMB",
+   "diet": "HP",
+   "label": "Ambulatory \u00b7 high phosphate"
+  },
+  {
+   "loading": "AMB",
+   "diet": "NP",
+   "label": "Ambulatory \u00b7 normal phosphate"
+  },
+  {
+   "loading": "HLU",
+   "diet": "HP",
+   "label": "Unloaded \u00b7 high phosphate"
+  },
+  {
+   "loading": "HLU",
+   "diet": "NP",
+   "label": "Unloaded \u00b7 normal phosphate"
+  }
+ ],
+ "shape_gain": 2.0,
+ "bvtv_range": [
+  0.04,
+  0.42
+ ],
+ "palette_bvtv": [
+  "#C06A1C",
+  "#D9A23A",
+  "#E9DDC8",
+  "#BCC3CB"
+ ],
+ "cells": [
+  {
+   "loading": "AMB",
+   "diet": "HP",
+   "stratum": 1,
+   "P2_far_mean": 0.1254,
+   "bvtv_mean": 0.3554,
+   "frac_transverse_nofrag_mean": 0.5509,
+   "da_mean": 0.3462,
+   "tbth_um_mean": 135.9,
+   "rats": [
+    {
+     "scan_id": "V01_EPR1",
+     "P2_far": 0.1641,
+     "bvtv": 0.3375,
+     "flagged": false
+    },
+    {
+     "scan_id": "V08_EPR1",
+     "P2_far": 0.1136,
+     "bvtv": 0.305,
+     "flagged": false
+    },
+    {
+     "scan_id": "V14_EPR1",
+     "P2_far": null,
+     "bvtv": 0.3902,
+     "flagged": true
+    },
+    {
+     "scan_id": "V18_EPR1",
+     "P2_far": null,
+     "bvtv": 0.4316,
+     "flagged": true
+    },
+    {
+     "scan_id": "V19_EPR1",
+     "P2_far": 0.0986,
+     "bvtv": 0.3126,
+     "flagged": false
+    }
+   ]
+  },
+  {
+   "loading": "AMB",
+   "diet": "HP",
+   "stratum": 2,
+   "P2_far_mean": 0.1413,
+   "bvtv_mean": 0.2724,
+   "frac_transverse_nofrag_mean": 0.3876,
+   "da_mean": 0.483,
+   "tbth_um_mean": 130.8,
+   "rats": [
+    {
+     "scan_id": "V01_EPR1",
+     "P2_far": 0.1371,
+     "bvtv": 0.2871,
+     "flagged": false
+    },
+    {
+     "scan_id": "V08_EPR1",
+     "P2_far": 0.0997,
+     "bvtv": 0.2595,
+     "flagged": false
+    },
+    {
+     "scan_id": "V14_EPR1",
+     "P2_far": 0.1772,
+     "bvtv": 0.2566,
+     "flagged": false
+    },
+    {
+     "scan_id": "V18_EPR1",
+     "P2_far": 0.1206,
+     "bvtv": 0.3472,
+     "flagged": false
+    },
+    {
+     "scan_id": "V19_EPR1",
+     "P2_far": 0.1719,
+     "bvtv": 0.2116,
+     "flagged": false
+    }
+   ]
+  },
+  {
+   "loading": "AMB",
+   "diet": "HP",
+   "stratum": 3,
+   "P2_far_mean": 0.1895,
+   "bvtv_mean": 0.2183,
+   "frac_transverse_nofrag_mean": 0.3549,
+   "da_mean": 0.5419,
+   "tbth_um_mean": 134.4,
+   "rats": [
+    {
+     "scan_id": "V01_EPR1",
+     "P2_far": 0.1872,
+     "bvtv": 0.2308,
+     "flagged": false
+    },
+    {
+     "scan_id": "V08_EPR1",
+     "P2_far": 0.136,
+     "bvtv": 0.1948,
+     "flagged": false
+    },
+    {
+     "scan_id": "V14_EPR1",
+     "P2_far": 0.2184,
+     "bvtv": 0.2062,
+     "flagged": false
+    },
+    {
+     "scan_id": "V18_EPR1",
+     "P2_far": 0.1538,
+     "bvtv": 0.3068,
+     "flagged": false
+    },
+    {
+     "scan_id": "V19_EPR1",
+     "P2_far": 0.2521,
+     "bvtv": 0.1526,
+     "flagged": false
+    }
+   ]
+  },
+  {
+   "loading": "AMB",
+   "diet": "HP",
+   "stratum": 4,
+   "P2_far_mean": 0.2351,
+   "bvtv_mean": 0.1667,
+   "frac_transverse_nofrag_mean": 0.3282,
+   "da_mean": 0.5779,
+   "tbth_um_mean": 140.2,
+   "rats": [
+    {
+     "scan_id": "V01_EPR1",
+     "P2_far": 0.2257,
+     "bvtv": 0.1758,
+     "flagged": false
+    },
+    {
+     "scan_id": "V08_EPR1",
+     "P2_far": 0.2192,
+     "bvtv": 0.1272,
+     "flagged": false
+    },
+    {
+     "scan_id": "V14_EPR1",
+     "P2_far": 0.2415,
+     "bvtv": 0.1732,
+     "flagged": false
+    },
+    {
+     "scan_id": "V18_EPR1",
+     "P2_far": 0.1923,
+     "bvtv": 0.2504,
+     "flagged": false
+    },
+    {
+     "scan_id": "V19_EPR1",
+     "P2_far": 0.2967,
+     "bvtv": 0.1071,
+     "flagged": false
+    }
+   ]
+  },
+  {
+   "loading": "AMB",
+   "diet": "HP",
+   "stratum": 5,
+   "P2_far_mean": 0.2661,
+   "bvtv_mean": 0.1304,
+   "frac_transverse_nofrag_mean": 0.3006,
+   "da_mean": 0.5578,
+   "tbth_um_mean": 149.2,
+   "rats": [
+    {
+     "scan_id": "V01_EPR1",
+     "P2_far": 0.2257,
+     "bvtv": 0.1542,
+     "flagged": false
+    },
+    {
+     "scan_id": "V08_EPR1",
+     "P2_far": 0.2472,
+     "bvtv": 0.0936,
+     "flagged": false
+    },
+    {
+     "scan_id": "V14_EPR1",
+     "P2_far": 0.3209,
+     "bvtv": 0.1405,
+     "flagged": false
+    },
+    {
+     "scan_id": "V18_EPR1",
+     "P2_far": 0.2281,
+     "bvtv": 0.1797,
+     "flagged": false
+    },
+    {
+     "scan_id": "V19_EPR1",
+     "P2_far": 0.3085,
+     "bvtv": 0.084,
+     "flagged": false
+    }
+   ]
+  },
+  {
+   "loading": "AMB",
+   "diet": "HP",
+   "stratum": 6,
+   "P2_far_mean": 0.2426,
+   "bvtv_mean": 0.1121,
+   "frac_transverse_nofrag_mean": 0.3065,
+   "da_mean": 0.5405,
+   "tbth_um_mean": 146.9,
+   "rats": [
+    {
+     "scan_id": "V01_EPR1",
+     "P2_far": 0.2409,
+     "bvtv": 0.1331,
+     "flagged": false
+    },
+    {
+     "scan_id": "V08_EPR1",
+     "P2_far": 0.1936,
+     "bvtv": 0.0794,
+     "flagged": false
+    },
+    {
+     "scan_id": "V14_EPR1",
+     "P2_far": 0.2777,
+     "bvtv": 0.1117,
+     "flagged": false
+    },
+    {
+     "scan_id": "V18_EPR1",
+     "P2_far": 0.239,
+     "bvtv": 0.1717,
+     "flagged": false
+    },
+    {
+     "scan_id": "V19_EPR1",
+     "P2_far": 0.262,
+     "bvtv": 0.0645,
+     "flagged": false
+    }
+   ]
+  },
+  {
+   "loading": "AMB",
+   "diet": "NP",
+   "stratum": 1,
+   "P2_far_mean": 0.1127,
+   "bvtv_mean": 0.4221,
+   "frac_transverse_nofrag_mean": 0.5359,
+   "da_mean": 0.3206,
+   "tbth_um_mean": 139.6,
+   "rats": [
+    {
+     "scan_id": "V10_EPR1",
+     "P2_far": 0.0789,
+     "bvtv": 0.3655,
+     "flagged": false
+    },
+    {
+     "scan_id": "V15_EPR1",
+     "P2_far": 0.1091,
+     "bvtv": 0.2959,
+     "flagged": false
+    },
+    {
+     "scan_id": "V16_EPR1",
+     "P2_far": 0.1263,
+     "bvtv": 0.4405,
+     "flagged": false
+    },
+    {
+     "scan_id": "V20_EPR1",
+     "P2_far": 0.1366,
+     "bvtv": 0.3918,
+     "flagged": false
+    },
+    {
+     "scan_id": "V23_EPR1",
+     "P2_far": null,
+     "bvtv": 0.6169,
+     "flagged": true
+    }
+   ]
+  },
+  {
+   "loading": "AMB",
+   "diet": "NP",
+   "stratum": 2,
+   "P2_far_mean": 0.1226,
+   "bvtv_mean": 0.3272,
+   "frac_transverse_nofrag_mean": 0.4036,
+   "da_mean": 0.4456,
+   "tbth_um_mean": 140.7,
+   "rats": [
+    {
+     "scan_id": "V10_EPR1",
+     "P2_far": 0.0782,
+     "bvtv": 0.3231,
+     "flagged": false
+    },
+    {
+     "scan_id": "V15_EPR1",
+     "P2_far": 0.1407,
+     "bvtv": 0.2395,
+     "flagged": false
+    },
+    {
+     "scan_id": "V16_EPR1",
+     "P2_far": 0.1563,
+     "bvtv": 0.279,
+     "flagged": false
+    },
+    {
+     "scan_id": "V20_EPR1",
+     "P2_far": 0.1151,
+     "bvtv": 0.3608,
+     "flagged": false
+    },
+    {
+     "scan_id": "V23_EPR1",
+     "P2_far": null,
+     "bvtv": 0.4335,
+     "flagged": true
+    }
+   ]
+  },
+  {
+   "loading": "AMB",
+   "diet": "NP",
+   "stratum": 3,
+   "P2_far_mean": 0.1388,
+   "bvtv_mean": 0.2791,
+   "frac_transverse_nofrag_mean": 0.391,
+   "da_mean": 0.4809,
+   "tbth_um_mean": 145.1,
+   "rats": [
+    {
+     "scan_id": "V10_EPR1",
+     "P2_far": 0.0899,
+     "bvtv": 0.2592,
+     "flagged": false
+    },
+    {
+     "scan_id": "V15_EPR1",
+     "P2_far": 0.2267,
+     "bvtv": 0.1925,
+     "flagged": false
+    },
+    {
+     "scan_id": "V16_EPR1",
+     "P2_far": 0.1246,
+     "bvtv": 0.2708,
+     "flagged": false
+    },
+    {
+     "scan_id": "V20_EPR1",
+     "P2_far": 0.1328,
+     "bvtv": 0.3183,
+     "flagged": false
+    },
+    {
+     "scan_id": "V23_EPR1",
+     "P2_far": 0.1201,
+     "bvtv": 0.3545,
+     "flagged": false
+    }
+   ]
+  },
+  {
+   "loading": "AMB",
+   "diet": "NP",
+   "stratum": 4,
+   "P2_far_mean": 0.1761,
+   "bvtv_mean": 0.2037,
+   "frac_transverse_nofrag_mean": 0.3581,
+   "da_mean": 0.5128,
+   "tbth_um_mean": 148.2,
+   "rats": [
+    {
+     "scan_id": "V10_EPR1",
+     "P2_far": 0.168,
+     "bvtv": 0.1866,
+     "flagged": false
+    },
+    {
+     "scan_id": "V15_EPR1",
+     "P2_far": 0.2011,
+     "bvtv": 0.1479,
+     "flagged": false
+    },
+    {
+     "scan_id": "V16_EPR1",
+     "P2_far": 0.2318,
+     "bvtv": 0.1759,
+     "flagged": false
+    },
+    {
+     "scan_id": "V20_EPR1",
+     "P2_far": 0.1662,
+     "bvtv": 0.2444,
+     "flagged": false
+    },
+    {
+     "scan_id": "V23_EPR1",
+     "P2_far": 0.1137,
+     "bvtv": 0.2636,
+     "flagged": false
+    }
+   ]
+  },
+  {
+   "loading": "AMB",
+   "diet": "NP",
+   "stratum": 5,
+   "P2_far_mean": 0.2027,
+   "bvtv_mean": 0.1644,
+   "frac_transverse_nofrag_mean": 0.3423,
+   "da_mean": 0.5301,
+   "tbth_um_mean": 152.0,
+   "rats": [
+    {
+     "scan_id": "V10_EPR1",
+     "P2_far": 0.1683,
+     "bvtv": 0.1485,
+     "flagged": false
+    },
+    {
+     "scan_id": "V15_EPR1",
+     "P2_far": 0.2195,
+     "bvtv": 0.1139,
+     "flagged": false
+    },
+    {
+     "scan_id": "V16_EPR1",
+     "P2_far": 0.2506,
+     "bvtv": 0.1415,
+     "flagged": false
+    },
+    {
+     "scan_id": "V20_EPR1",
+     "P2_far": 0.1912,
+     "bvtv": 0.2068,
+     "flagged": false
+    },
+    {
+     "scan_id": "V23_EPR1",
+     "P2_far": 0.1838,
+     "bvtv": 0.2111,
+     "flagged": false
+    }
+   ]
+  },
+  {
+   "loading": "AMB",
+   "diet": "NP",
+   "stratum": 6,
+   "P2_far_mean": 0.2155,
+   "bvtv_mean": 0.1361,
+   "frac_transverse_nofrag_mean": 0.3306,
+   "da_mean": 0.5251,
+   "tbth_um_mean": 150.9,
+   "rats": [
+    {
+     "scan_id": "V10_EPR1",
+     "P2_far": 0.1565,
+     "bvtv": 0.1275,
+     "flagged": false
+    },
+    {
+     "scan_id": "V15_EPR1",
+     "P2_far": 0.2077,
+     "bvtv": 0.0962,
+     "flagged": false
+    },
+    {
+     "scan_id": "V16_EPR1",
+     "P2_far": 0.2603,
+     "bvtv": 0.1346,
+     "flagged": false
+    },
+    {
+     "scan_id": "V20_EPR1",
+     "P2_far": 0.2369,
+     "bvtv": 0.1589,
+     "flagged": false
+    },
+    {
+     "scan_id": "V23_EPR1",
+     "P2_far": 0.2163,
+     "bvtv": 0.1634,
+     "flagged": false
+    }
+   ]
+  },
+  {
+   "loading": "HLU",
+   "diet": "HP",
+   "stratum": 1,
+   "P2_far_mean": 0.284,
+   "bvtv_mean": 0.1581,
+   "frac_transverse_nofrag_mean": 0.5137,
+   "da_mean": 0.3445,
+   "tbth_um_mean": 101.0,
+   "rats": [
+    {
+     "scan_id": "V02_EPR1",
+     "P2_far": 0.4426,
+     "bvtv": 0.0751,
+     "flagged": false
+    },
+    {
+     "scan_id": "V09_EPR1",
+     "P2_far": 0.3259,
+     "bvtv": 0.0963,
+     "flagged": false
+    },
+    {
+     "scan_id": "V11_EPR1",
+     "P2_far": 0.3107,
+     "bvtv": 0.0948,
+     "flagged": false
+    },
+    {
+     "scan_id": "V25_EPR1",
+     "P2_far": 0.1165,
+     "bvtv": 0.3781,
+     "flagged": false
+    },
+    {
+     "scan_id": "V27_EPR1",
+     "P2_far": 0.2245,
+     "bvtv": 0.146,
+     "flagged": false
+    }
+   ]
+  },
+  {
+   "loading": "HLU",
+   "diet": "HP",
+   "stratum": 2,
+   "P2_far_mean": 0.349,
+   "bvtv_mean": 0.1167,
+   "frac_transverse_nofrag_mean": 0.2659,
+   "da_mean": 0.5412,
+   "tbth_um_mean": 113.5,
+   "rats": [
+    {
+     "scan_id": "V02_EPR1",
+     "P2_far": 0.4351,
+     "bvtv": 0.0782,
+     "flagged": false
+    },
+    {
+     "scan_id": "V09_EPR1",
+     "P2_far": 0.3624,
+     "bvtv": 0.1011,
+     "flagged": false
+    },
+    {
+     "scan_id": "V11_EPR1",
+     "P2_far": 0.3332,
+     "bvtv": 0.1124,
+     "flagged": false
+    },
+    {
+     "scan_id": "V25_EPR1",
+     "P2_far": 0.29,
+     "bvtv": 0.1766,
+     "flagged": false
+    },
+    {
+     "scan_id": "V27_EPR1",
+     "P2_far": 0.3242,
+     "bvtv": 0.115,
+     "flagged": false
+    }
+   ]
+  },
+  {
+   "loading": "HLU",
+   "diet": "HP",
+   "stratum": 3,
+   "P2_far_mean": 0.325,
+   "bvtv_mean": 0.0958,
+   "frac_transverse_nofrag_mean": 0.2844,
+   "da_mean": 0.5688,
+   "tbth_um_mean": 119.1,
+   "rats": [
+    {
+     "scan_id": "V02_EPR1",
+     "P2_far": 0.377,
+     "bvtv": 0.0652,
+     "flagged": false
+    },
+    {
+     "scan_id": "V09_EPR1",
+     "P2_far": 0.308,
+     "bvtv": 0.08,
+     "flagged": false
+    },
+    {
+     "scan_id": "V11_EPR1",
+     "P2_far": 0.2822,
+     "bvtv": 0.1181,
+     "flagged": false
+    },
+    {
+     "scan_id": "V25_EPR1",
+     "P2_far": 0.3421,
+     "bvtv": 0.1196,
+     "flagged": false
+    },
+    {
+     "scan_id": "V27_EPR1",
+     "P2_far": 0.3157,
+     "bvtv": 0.096,
+     "flagged": false
+    }
+   ]
+  },
+  {
+   "loading": "HLU",
+   "diet": "HP",
+   "stratum": 4,
+   "P2_far_mean": 0.3091,
+   "bvtv_mean": 0.0694,
+   "frac_transverse_nofrag_mean": 0.2845,
+   "da_mean": 0.5578,
+   "tbth_um_mean": 124.8,
+   "rats": [
+    {
+     "scan_id": "V02_EPR1",
+     "P2_far": 0.3083,
+     "bvtv": 0.0546,
+     "flagged": false
+    },
+    {
+     "scan_id": "V09_EPR1",
+     "P2_far": 0.3107,
+     "bvtv": 0.0571,
+     "flagged": false
+    },
+    {
+     "scan_id": "V11_EPR1",
+     "P2_far": 0.2561,
+     "bvtv": 0.1002,
+     "flagged": false
+    },
+    {
+     "scan_id": "V25_EPR1",
+     "P2_far": 0.3024,
+     "bvtv": 0.0805,
+     "flagged": false
+    },
+    {
+     "scan_id": "V27_EPR1",
+     "P2_far": 0.3682,
+     "bvtv": 0.0545,
+     "flagged": false
+    }
+   ]
+  },
+  {
+   "loading": "HLU",
+   "diet": "HP",
+   "stratum": 5,
+   "P2_far_mean": 0.2226,
+   "bvtv_mean": 0.0506,
+   "frac_transverse_nofrag_mean": 0.3303,
+   "da_mean": 0.5043,
+   "tbth_um_mean": 124.6,
+   "rats": [
+    {
+     "scan_id": "V02_EPR1",
+     "P2_far": 0.1984,
+     "bvtv": 0.0224,
+     "flagged": false
+    },
+    {
+     "scan_id": "V09_EPR1",
+     "P2_far": 0.1476,
+     "bvtv": 0.0469,
+     "flagged": false
+    },
+    {
+     "scan_id": "V11_EPR1",
+     "P2_far": 0.2124,
+     "bvtv": 0.0846,
+     "flagged": false
+    },
+    {
+     "scan_id": "V25_EPR1",
+     "P2_far": 0.3158,
+     "bvtv": 0.0572,
+     "flagged": false
+    },
+    {
+     "scan_id": "V27_EPR1",
+     "P2_far": 0.2386,
+     "bvtv": 0.0421,
+     "flagged": false
+    }
+   ]
+  },
+  {
+   "loading": "HLU",
+   "diet": "HP",
+   "stratum": 6,
+   "P2_far_mean": 0.2044,
+   "bvtv_mean": 0.0418,
+   "frac_transverse_nofrag_mean": 0.3361,
+   "da_mean": 0.5079,
+   "tbth_um_mean": 153.9,
+   "rats": [
+    {
+     "scan_id": "V02_EPR1",
+     "P2_far": 0.1717,
+     "bvtv": 0.0167,
+     "flagged": false
+    },
+    {
+     "scan_id": "V09_EPR1",
+     "P2_far": 0.1844,
+     "bvtv": 0.0336,
+     "flagged": false
+    },
+    {
+     "scan_id": "V11_EPR1",
+     "P2_far": 0.1574,
+     "bvtv": 0.0583,
+     "flagged": false
+    },
+    {
+     "scan_id": "V25_EPR1",
+     "P2_far": 0.2351,
+     "bvtv": 0.0617,
+     "flagged": false
+    },
+    {
+     "scan_id": "V27_EPR1",
+     "P2_far": 0.2736,
+     "bvtv": 0.0387,
+     "flagged": false
+    }
+   ]
+  },
+  {
+   "loading": "HLU",
+   "diet": "NP",
+   "stratum": 1,
+   "P2_far_mean": 0.188,
+   "bvtv_mean": 0.2195,
+   "frac_transverse_nofrag_mean": 0.5324,
+   "da_mean": 0.2966,
+   "tbth_um_mean": 113.0,
+   "rats": [
+    {
+     "scan_id": "V03_EPR1",
+     "P2_far": 0.2204,
+     "bvtv": 0.2274,
+     "flagged": false
+    },
+    {
+     "scan_id": "V06_EPR1",
+     "P2_far": 0.1814,
+     "bvtv": 0.2719,
+     "flagged": false
+    },
+    {
+     "scan_id": "V12_EPR1",
+     "P2_far": 0.0892,
+     "bvtv": 0.2308,
+     "flagged": false
+    },
+    {
+     "scan_id": "V13_EPR1",
+     "P2_far": 0.2732,
+     "bvtv": 0.1411,
+     "flagged": false
+    },
+    {
+     "scan_id": "V17_EPR1",
+     "P2_far": 0.1757,
+     "bvtv": 0.2262,
+     "flagged": false
+    }
+   ]
+  },
+  {
+   "loading": "HLU",
+   "diet": "NP",
+   "stratum": 2,
+   "P2_far_mean": 0.2564,
+   "bvtv_mean": 0.2008,
+   "frac_transverse_nofrag_mean": 0.3107,
+   "da_mean": 0.4808,
+   "tbth_um_mean": 133.3,
+   "rats": [
+    {
+     "scan_id": "V03_EPR1",
+     "P2_far": 0.2419,
+     "bvtv": 0.23,
+     "flagged": false
+    },
+    {
+     "scan_id": "V06_EPR1",
+     "P2_far": 0.263,
+     "bvtv": 0.1725,
+     "flagged": false
+    },
+    {
+     "scan_id": "V12_EPR1",
+     "P2_far": null,
+     "bvtv": 0.3295,
+     "flagged": true
+    },
+    {
+     "scan_id": "V13_EPR1",
+     "P2_far": 0.2707,
+     "bvtv": 0.1186,
+     "flagged": false
+    },
+    {
+     "scan_id": "V17_EPR1",
+     "P2_far": 0.2499,
+     "bvtv": 0.1534,
+     "flagged": false
+    }
+   ]
+  },
+  {
+   "loading": "HLU",
+   "diet": "NP",
+   "stratum": 3,
+   "P2_far_mean": 0.2297,
+   "bvtv_mean": 0.1935,
+   "frac_transverse_nofrag_mean": 0.322,
+   "da_mean": 0.4762,
+   "tbth_um_mean": 144.5,
+   "rats": [
+    {
+     "scan_id": "V03_EPR1",
+     "P2_far": 0.2264,
+     "bvtv": 0.24,
+     "flagged": false
+    },
+    {
+     "scan_id": "V06_EPR1",
+     "P2_far": 0.1978,
+     "bvtv": 0.2049,
+     "flagged": false
+    },
+    {
+     "scan_id": "V12_EPR1",
+     "P2_far": null,
+     "bvtv": 0.2712,
+     "flagged": true
+    },
+    {
+     "scan_id": "V13_EPR1",
+     "P2_far": 0.2717,
+     "bvtv": 0.1082,
+     "flagged": false
+    },
+    {
+     "scan_id": "V17_EPR1",
+     "P2_far": 0.223,
+     "bvtv": 0.1431,
+     "flagged": false
+    }
+   ]
+  },
+  {
+   "loading": "HLU",
+   "diet": "NP",
+   "stratum": 4,
+   "P2_far_mean": 0.213,
+   "bvtv_mean": 0.1635,
+   "frac_transverse_nofrag_mean": 0.3261,
+   "da_mean": 0.458,
+   "tbth_um_mean": 148.7,
+   "rats": [
+    {
+     "scan_id": "V03_EPR1",
+     "P2_far": 0.1894,
+     "bvtv": 0.2396,
+     "flagged": false
+    },
+    {
+     "scan_id": "V06_EPR1",
+     "P2_far": 0.1768,
+     "bvtv": 0.1796,
+     "flagged": false
+    },
+    {
+     "scan_id": "V12_EPR1",
+     "P2_far": null,
+     "bvtv": 0.2089,
+     "flagged": true
+    },
+    {
+     "scan_id": "V13_EPR1",
+     "P2_far": 0.2597,
+     "bvtv": 0.086,
+     "flagged": false
+    },
+    {
+     "scan_id": "V17_EPR1",
+     "P2_far": 0.2261,
+     "bvtv": 0.1033,
+     "flagged": false
+    }
+   ]
+  },
+  {
+   "loading": "HLU",
+   "diet": "NP",
+   "stratum": 5,
+   "P2_far_mean": 0.228,
+   "bvtv_mean": 0.1379,
+   "frac_transverse_nofrag_mean": 0.3298,
+   "da_mean": 0.4672,
+   "tbth_um_mean": 154.0,
+   "rats": [
+    {
+     "scan_id": "V03_EPR1",
+     "P2_far": 0.1521,
+     "bvtv": 0.2586,
+     "flagged": false
+    },
+    {
+     "scan_id": "V06_EPR1",
+     "P2_far": 0.2115,
+     "bvtv": 0.145,
+     "flagged": false
+    },
+    {
+     "scan_id": "V12_EPR1",
+     "P2_far": null,
+     "bvtv": 0.1561,
+     "flagged": true
+    },
+    {
+     "scan_id": "V13_EPR1",
+     "P2_far": 0.3205,
+     "bvtv": 0.072,
+     "flagged": false
+    },
+    {
+     "scan_id": "V17_EPR1",
+     "P2_far": null,
+     "bvtv": 0.0579,
+     "flagged": true
+    }
+   ]
+  },
+  {
+   "loading": "HLU",
+   "diet": "NP",
+   "stratum": 6,
+   "P2_far_mean": 0.2598,
+   "bvtv_mean": 0.1178,
+   "frac_transverse_nofrag_mean": 0.3244,
+   "da_mean": 0.4665,
+   "tbth_um_mean": 151.0,
+   "rats": [
+    {
+     "scan_id": "V03_EPR1",
+     "P2_far": 0.1511,
+     "bvtv": 0.2377,
+     "flagged": false
+    },
+    {
+     "scan_id": "V06_EPR1",
+     "P2_far": 0.21,
+     "bvtv": 0.128,
+     "flagged": false
+    },
+    {
+     "scan_id": "V12_EPR1",
+     "P2_far": null,
+     "bvtv": 0.124,
+     "flagged": true
+    },
+    {
+     "scan_id": "V13_EPR1",
+     "P2_far": 0.3655,
+     "bvtv": 0.0596,
+     "flagged": false
+    },
+    {
+     "scan_id": "V17_EPR1",
+     "P2_far": 0.3128,
+     "bvtv": 0.0395,
+     "flagged": false
+    }
+   ]
+  }
+ ],
+ "effect_unloading": {
+  "P2_far": {
+   "label": "$P_2^{\\rm far}$ (order about depth)",
+   "g": [
+    1.337,
+    3.324,
+    2.005,
+    1.034,
+    -0.162,
+    -0.0
+   ],
+   "ci_lo": [
+    0.271,
+    1.898,
+    0.901,
+    0.076,
+    -1.094,
+    -0.901
+   ],
+   "ci_hi": [
+    2.402,
+    4.749,
+    3.108,
+    1.993,
+    0.769,
+    0.9
+   ],
+   "n": [
+    [
+     7,
+     10
+    ],
+    [
+     9,
+     9
+    ],
+    [
+     10,
+     9
+    ],
+    [
+     10,
+     9
+    ],
+    [
+     10,
+     8
+    ],
+    [
+     10,
+     9
+    ]
+   ]
+  },
+  "frac_transverse_nofrag": {
+   "label": "transverse strut fraction",
+   "g": [
+    -0.608,
+    -3.637,
+    -2.148,
+    -0.958,
+    0.214,
+    0.339
+   ],
+   "ci_lo": [
+    -1.596,
+    -5.142,
+    -3.278,
+    -1.908,
+    -0.718,
+    -0.568
+   ],
+   "ci_hi": [
+    0.379,
+    -2.132,
+    -1.018,
+    -0.007,
+    1.147,
+    1.246
+   ],
+   "n": [
+    [
+     7,
+     10
+    ],
+    [
+     9,
+     9
+    ],
+    [
+     10,
+     9
+    ],
+    [
+     10,
+     9
+    ],
+    [
+     10,
+     8
+    ],
+    [
+     10,
+     9
+    ]
+   ]
+  },
+  "da": {
+   "label": "DA (conventional fabric)",
+   "g": [
+    -0.259,
+    0.783,
+    0.165,
+    -0.514,
+    -1.014,
+    -0.694
+   ],
+   "ci_lo": [
+    -1.139,
+    -0.127,
+    -0.713,
+    -1.405,
+    -1.945,
+    -1.596
+   ],
+   "ci_hi": [
+    0.621,
+    1.692,
+    1.043,
+    0.377,
+    -0.083,
+    0.209
+   ],
+   "n": [
+    [
+     10,
+     10
+    ],
+    [
+     10,
+     10
+    ],
+    [
+     10,
+     10
+    ],
+    [
+     10,
+     10
+    ],
+    [
+     10,
+     10
+    ],
+    [
+     10,
+     10
+    ]
+   ]
+  },
+  "bvtv": {
+   "label": "BV/TV",
+   "g": [
+    -2.013,
+    -1.909,
+    -1.479,
+    -1.083,
+    -0.855,
+    -0.793
+   ],
+   "ci_lo": [
+    -3.089,
+    -2.967,
+    -2.468,
+    -2.021,
+    -1.771,
+    -1.704
+   ],
+   "ci_hi": [
+    -0.937,
+    -0.852,
+    -0.49,
+    -0.144,
+    0.06,
+    0.117
+   ],
+   "n": [
+    [
+     10,
+     10
+    ],
+    [
+     10,
+     10
+    ],
+    [
+     10,
+     10
+    ],
+    [
+     10,
+     10
+    ],
+    [
+     10,
+     10
+    ],
+    [
+     10,
+     10
+    ]
+   ]
+  }
+ }
+}
