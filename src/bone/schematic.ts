@@ -45,8 +45,9 @@ const POLY = STRUTS.map((s) => {
   return { curve: c, pts, rad: pts.map((_, i) => s.r0 + (s.r1 - s.r0) * (i / SEG)) };
 });
 
-/** Distance from p to strut k's axis, and the axis radius at the nearest point. */
-function axisDist(k: number, x: number, y: number, z: number) {
+/** Distance from p to strut k's axis, and the axis radius at the nearest point, written to AX (no allocation). */
+const AX = { a: 0, r: 0 };
+function axisDistInto(k: number, x: number, y: number, z: number) {
   const { pts, rad } = POLY[k];
   let best = Infinity;
   let r = rad[0];
@@ -66,7 +67,8 @@ function axisDist(k: number, x: number, y: number, z: number) {
       r = rad[i] + (rad[i + 1] - rad[i]) * t;
     }
   }
-  return [Math.sqrt(best), r] as const;
+  AX.a = Math.sqrt(best);
+  AX.r = r;
 }
 
 const smin = (a: number, b: number) => {
@@ -78,8 +80,8 @@ const smin = (a: number, b: number) => {
 function sdf(x: number, y: number, z: number, s: number) {
   let d = Infinity;
   for (let k = 0; k < STRUTS.length; k++) {
-    const [a, r] = axisDist(k, x, y, z);
-    d = d === Infinity ? a - s * r : smin(d, a - s * r);
+    axisDistInto(k, x, y, z);
+    d = d === Infinity ? AX.a - s * AX.r : smin(d, AX.a - s * AX.r);
   }
   return d;
 }
@@ -102,23 +104,36 @@ function field() {
   const N = NX * NY * NZ;
   const d = new Float32Array(N * TOP).fill(10);
   const r = new Float32Array(N * TOP);
-  const tmp: { a: number; r: number }[] = [];
+  // per voxel, keep the TOP struts with the smallest surface distance (a - r) by insertion; nothing is allocated in the loop
+  const ka = new Float64Array(TOP);
+  const kr = new Float64Array(TOP);
+  const ks = new Float64Array(TOP);
   for (let iz = 0; iz < NZ; iz++)
     for (let iy = 0; iy < NY; iy++)
       for (let ix = 0; ix < NX; ix++) {
         const x = X0 + ix * H;
         const y = Y0 + iy * H;
         const z = Z0 + iz * H;
-        tmp.length = 0;
+        ks.fill(Infinity);
         for (let k = 0; k < STRUTS.length; k++) {
-          const [a, rr] = axisDist(k, x, y, z);
-          tmp.push({ a, r: rr });
+          axisDistInto(k, x, y, z);
+          const sk = AX.a - AX.r;
+          if (sk >= ks[TOP - 1]) continue;
+          let j = TOP - 1;
+          while (j > 0 && ks[j - 1] > sk) {
+            ks[j] = ks[j - 1];
+            ka[j] = ka[j - 1];
+            kr[j] = kr[j - 1];
+            j--;
+          }
+          ks[j] = sk;
+          ka[j] = AX.a;
+          kr[j] = AX.r;
         }
-        tmp.sort((p, q) => p.a - p.r - (q.a - q.r));
         const o = ((iz * NY + iy) * NX + ix) * TOP;
         for (let j = 0; j < TOP; j++) {
-          d[o + j] = tmp[j].a;
-          r[o + j] = tmp[j].r;
+          d[o + j] = ka[j];
+          r[o + j] = kr[j];
         }
       }
   FIELD = { d, r };

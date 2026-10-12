@@ -20,6 +20,7 @@ import {
   eigSym3,
   gradTensor,
   phaseStats,
+  renderCoronal,
   renderSlice,
   sampleWrap,
   shadeBinary,
@@ -31,7 +32,7 @@ import {
 } from "./bone/engine";
 import { clearGroup, drawMILFace, drawSVD, faceSection, milFace, milFaceRose, svdFace } from "./bone/fabric3d";
 import { buildModel, MODELS, type ModelBase, type ModelId } from "./bone/models";
-import { planeOutline, VolumeScene, type Viewable } from "./bone/raymarch";
+import { coronalOutline, planeOutline, VolumeScene, type Viewable } from "./bone/raymarch";
 import { prepareSchematics, SeparationSchematic, ThicknessSchematic } from "./bone/schematic";
 import { Viewer } from "./bone/views";
 import { localThickness, smoothInPhase, type Dims } from "./bone/volume";
@@ -125,6 +126,10 @@ export function Sandbox() {
     const outline = planeOutline(0);
     outline.name = "plane";
     v.scene.add(outline);
+    const cor = coronalOutline(0);
+    cor.name = "coronal";
+    cor.visible = false;
+    v.scene.add(cor);
     return v;
   }, []);
   const base = useRef<ModelBase | null>(null);
@@ -182,6 +187,8 @@ export function Sandbox() {
     vs.setTexRot(metric === "da" && fabMode === "gst" ? new THREE.Matrix3().set(c, s, 0, -s, c, 0, 0, 0, 1) : new THREE.Matrix3());
     const plane = vs.scene.getObjectByName("plane");
     if (plane) plane.visible = metric !== "da";
+    const cor = vs.scene.getObjectByName("coronal");
+    if (cor) cor.visible = metric === "bv-tv" || metric === "conn-d";
   }, [vs, metric, psi, fabMode]);
   // each metric starts from its own camera angle
   useEffect(() => {
@@ -193,15 +200,18 @@ export function Sandbox() {
 
   /* ------------------------------ section ---------------------------- */
   const [px, setPx] = useRaster();
+  const [pxCor, setPxCor] = useRaster();
   useEffect(() => {
     const S = spec.current;
     if (!S) return;
     const id = requestAnimationFrame(() => {
-      if (metric === "bv-tv") setPx(renderSlice(S.q, D, beta, (D[1] - 1) / 2, R, shadeBinary));
-      else if (metric === "conn-d") setPx(renderSlice(S.q, D, beta, (D[1] - 1) / 2, R, shadeGrey([140, 140, 146])));
+      const shade = metric === "bv-tv" ? shadeBinary : metric === "conn-d" ? shadeGrey([140, 140, 146]) : null;
+      if (!shade) return;
+      setPx(renderSlice(S.q, D, beta, (D[1] - 1) / 2, R, shade));
+      setPxCor(renderCoronal(S.q, D, beta, (D[2] - 1) / 2, R, shade));
     });
     return () => cancelAnimationFrame(id);
-  }, [metric, beta, specV, setPx]);
+  }, [metric, beta, specV, setPx, setPxCor]);
 
   /* ----------------------------- Conn.D ------------------------------ */
   const [conn, setConn] = useState<{ chi: number; b0: number; b1: number } | null>(null);
@@ -217,6 +227,11 @@ export function Sandbox() {
 
   /* ---------------------------- Tb.Th / Tb.Sp ------------------------- */
   const [st, setSt] = useState<null | (ReturnType<typeof phaseStats> & { bv: number })>(null);
+  // switching to Tb.Th or Tb.Sp plays the colour sweep once the field is ready
+  const autoSweep = useRef(false);
+  useEffect(() => {
+    autoSweep.current = metric === "tb-th" || metric === "tb-sp";
+  }, [metric]);
   useDebounced(
     () => {
       if (!thick || !spec.current) return;
@@ -231,6 +246,10 @@ export function Sandbox() {
         setSt({ ...phaseStats(mm, bone, thick.fg, thick.max), bv: bvForBeta(S.sorted, beta) });
         setPx(renderSlice(S.q, D, beta, (D[1] - 1) / 2, R, shadeLT(norm, D, thick.stops, thick.fg)));
         setBusy(false);
+        if (autoSweep.current) {
+          autoSweep.current = false;
+          play();
+        }
       });
     },
     [metric, beta, specV],
@@ -665,13 +684,21 @@ export function Sandbox() {
           {(metric === "bv-tv" || metric === "conn-d" || thick) && (
             <div className="side-card">
               <p className="side-h">Insets</p>
-              <div className={`side-insets ${thick ? "two" : ""}`}>
+              <div className="side-insets two">
                 <div>
-                  <p className="strip-h">Section at the analysis plane</p>
+                  <p className="strip-h">{thick ? "Section at the analysis plane" : "Axial section"}</p>
                   <Frame>
-                    <SliceCanvas pixels={px} R={R} alt="Section at the analysis plane" />
+                    <SliceCanvas pixels={px} R={R} alt={thick ? "Section at the analysis plane" : "Axial section"} />
                   </Frame>
                 </div>
+                {!thick && (
+                  <div>
+                    <p className="strip-h">Coronal section</p>
+                    <Frame>
+                      <SliceCanvas pixels={pxCor} R={R} alt="Coronal section" />
+                    </Frame>
+                  </div>
+                )}
                 {thick && sch && (
                   <div>
                     <p className="strip-h">Largest sphere in each {metric === "tb-th" ? "strut" : "pore"}</p>

@@ -445,16 +445,30 @@ export function tube(a: V3, b: V3, r: number, mat: THREE.Material) {
 }
 
 /** The analysis plane outline drawn around the specimen. */
-export function planeOutline(y = 0, half = 0.6) {
+export function planeOutline(y = 0, half = 0.6, color: THREE.ColorRepresentation = 0x000000, opacity = 1, r = 0.0085) {
   const g = new THREE.Group();
-  const mat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+  const mat = new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity });
   const P: V3[] = [
     [-half, y, -half],
     [half, y, -half],
     [half, y, half],
     [-half, y, half],
   ];
-  for (let i = 0; i < 4; i++) g.add(tube(P[i], P[(i + 1) % 4], 0.0085, mat));
+  for (let i = 0; i < 4; i++) g.add(tube(P[i], P[(i + 1) % 4], r, mat));
+  return g;
+}
+
+/** The coronal plane outline (vertical, facing +z) drawn around the specimen. */
+export function coronalOutline(z = 0, half = 0.6, color: THREE.ColorRepresentation = 0x000000, opacity = 1, r = 0.0085) {
+  const g = new THREE.Group();
+  const mat = new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity });
+  const P: V3[] = [
+    [-half, -half, z],
+    [half, -half, z],
+    [half, half, z],
+    [-half, half, z],
+  ];
+  for (let i = 0; i < 4; i++) g.add(tube(P[i], P[(i + 1) % 4], r, mat));
   return g;
 }
 

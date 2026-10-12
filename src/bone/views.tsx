@@ -5,8 +5,11 @@ import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import type { Viewable } from "./raymarch";
 import { disposeScene } from "./dispose";
 
-/* Each view owns a WebGL renderer bound to its own canvas, created when the
-   view mounts and destroyed (context released) when it unmounts. An earlier
+/* Each view owns a WebGL renderer bound to its own canvas, created while the
+   view is within about a screen of the viewport and destroyed (context and GPU
+   memory released) once it scrolls further away, so a long page holds only a
+   few contexts at a time. The scene keeps its data on the CPU and re-uploads
+   it when the view comes back. An earlier
    design shared one offscreen renderer and copied every frame into 2-D
    canvases; in Firefox each copy is a GPU-to-CPU readback and each resize
    reallocates the drawing buffer, which is what made the page heavy. */
@@ -99,10 +102,18 @@ export function Viewer({
   const ov = useRef<HTMLCanvasElement>(null);
   const [touched, setTouched] = useState(false);
   const [nogl, setNogl] = useState(() => typeof window !== "undefined" && !hasWebGL());
+  const [near, setNear] = useState(false);
+  useEffect(() => {
+    const h = host.current;
+    if (!h) return;
+    const io = new IntersectionObserver(([e]) => setNear(e.isIntersecting), { rootMargin: "120% 0px" });
+    io.observe(h);
+    return () => io.disconnect();
+  }, []);
 
   useEffect(() => {
     const h = host.current;
-    if (!h || !view || nogl) return;
+    if (!h || !view || nogl || !near) return;
     const r = createRendererIn(h, `block h-full w-full ${interactive ? "cursor-grab active:cursor-grabbing" : ""}`);
     if (!r) {
       setNogl(true);
@@ -251,7 +262,7 @@ export function Viewer({
       disposeScene(view.scene);
       destroyRenderer(r);
     };
-  }, [view, interactive, maxDpr, nogl, alt]);
+  }, [view, interactive, maxDpr, nogl, alt, near]);
 
   return (
     <div ref={host} className="relative h-full w-full">

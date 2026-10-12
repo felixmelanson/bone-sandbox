@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { FactorialSection } from "./factorial";
+import { Explore } from "./explore";
 import { Sandbox } from "./sandbox";
 import { Concepts } from "./concepts";
 import { Caveats, DecompositionSection, PhosphateSection, TwinsSection } from "./section5";
@@ -7,12 +8,13 @@ import { TwoClocksSection } from "./twoclocks";
 import { ABSTRACT, INTRO, META, METHOD, REFERENCES, SPECIMEN } from "./text";
 
 /* =====================================================================
-   Three tabs: the interactive sandbox (one specimen, one 3-D view, pick
+   Tabs: the scrolling explorer (default), the interactive sandbox (one specimen, one 3-D view, pick
    a metric), the results (section 5 figures), and the background text.
    Only the active tab is mounted.
    ===================================================================== */
 
 const TABS = [
+  { id: "explore", t: "Explore" },
   { id: "sandbox", t: "Sandbox" },
   { id: "concepts", t: "Concepts" },
   { id: "results", t: "Results" },
@@ -23,7 +25,7 @@ type Tab = (typeof TABS)[number]["id"];
 export default function App() {
   const read = (): Tab => {
     const h = location.hash.slice(1).split("?")[0];
-    return TABS.some((t) => t.id === h) ? (h as Tab) : "sandbox";
+    return TABS.some((t) => t.id === h) ? (h as Tab) : "explore";
   };
   const [tab, setTab] = useState<Tab>(read);
   useEffect(() => {
@@ -48,6 +50,7 @@ export default function App() {
         </nav>
       </header>
 
+      {tab === "explore" && <Explore />}
       {tab === "sandbox" && <Sandbox />}
       {tab === "concepts" && <Concepts />}
 

@@ -407,6 +407,35 @@ export function renderSlice(q: QField, d: Dims, beta: number, yv: number, R: num
   return out;
 }
 
+/**
+ * Vertical (coronal) section at voxel depth `zv`, viewed from the front with
+ * y up, using the same edge antialiasing as `renderSlice`.
+ */
+export function renderCoronal(q: QField, d: Dims, beta: number, zv: number, R: number, shade: Shade) {
+  const out = new Uint8ClampedArray(R * R * 4);
+  const src = q.signed ?? q;
+  const at = (x: number, y: number, z: number) => Math.max(Math.abs(tri(src, d, x, y, z)), tri(q, d, x, y, z) - 0.3 * beta);
+  const sx = d[0] / R;
+  const sy = d[1] / R;
+  for (let j = 0; j < R; j++) {
+    for (let i = 0; i < R; i++) {
+      const x = (i + 0.5) * sx - 0.5;
+      const y = (R - 1 - j + 0.5) * sy - 0.5;
+      const f = beta - at(x, y, zv);
+      const fu = beta - at(x + sx, y, zv) - f;
+      const fv = beta - at(x, y + sy, zv) - f;
+      const cov = Math.min(1, Math.max(0, 0.5 + f / (Math.hypot(fu, fv) + 1e-6)));
+      const c = shade(cov, x, y, zv);
+      const o = (j * R + i) * 4;
+      out[o] = c[0];
+      out[o + 1] = c[1];
+      out[o + 2] = c[2];
+      out[o + 3] = 255;
+    }
+  }
+  return out;
+}
+
 export const mix = (a: number, b: number, t: number) => a + (b - a) * t;
 
 export const shadeBinary: Shade = (c) => [255 * c, 255 * c, 255 * c];

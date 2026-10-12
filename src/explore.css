@@ -1,0 +1,360 @@
+/* =====================================================================
+   Explore: a scientific paper. Source Serif 4 for reading, Inter for
+   figure labels, controls and numbers. Hairline rules between rows,
+   generous measure, no cards.
+   ===================================================================== */
+
+.tab-explore {
+  --ink: #1a1a1a;
+  --ink2: #3f3f46;
+  --mute: #71717a;
+  --line: #e7e5e4;
+  --acc: #b3244f;
+  --sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --serif: "Source Serif 4", "Source Serif Pro", Georgia, serif;
+  background: #fff;
+}
+.tab-explore,
+.tab-explore * {
+  font-family: var(--sans);
+}
+.tab-explore .topbar {
+  display: none;
+}
+
+.xpaper {
+  max-width: 1180px;
+  color: var(--ink);
+}
+
+/* ---------------------------- title block ---------------------------- */
+
+.xpaper .titleblock {
+  max-width: none;
+  padding: 64px 0 8px;
+}
+.xpaper .titleblock h1 {
+  font-family: var(--serif);
+  font-size: clamp(30px, 3.6vw, 42px);
+  font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+.xpaper .byline {
+  margin-top: 14px;
+  font-size: 14px;
+  color: var(--mute);
+}
+/* ------------------------------ sections ----------------------------- */
+
+.psec {
+  padding-top: 48px;
+}
+.psec > h2 {
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--ink);
+  font-family: var(--serif);
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.xpaper .secnum {
+  min-width: 2.2em;
+  color: var(--mute);
+  font-family: var(--serif);
+  font-weight: 400;
+}
+
+/* one row per metric: heading, then the figure floated right with the text wrapping around and below it */
+.xpaper .og-row {
+  display: flow-root;
+  padding: 36px 0 40px;
+  border-bottom: 1px solid var(--line);
+}
+.xpaper .og-row:last-child {
+  border-bottom: 0;
+}
+.xpaper .og-head {
+  margin-bottom: 4px;
+}
+.xpaper .og-fig {
+  float: right;
+  width: 50%;
+  margin: 2px 0 16px 44px;
+}
+.xpaper .og-row.wide .og-fig {
+  width: 58%;
+}
+.xpaper .og-text p,
+.xpaper .og-text li {
+  text-align: left;
+  hyphens: manual;
+}
+.xpaper .og-h {
+  display: block;
+  font-family: var(--serif);
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.005em;
+}
+.xpaper .og-h .secnum {
+  min-width: 2.4em;
+}
+.xpaper .og-abbr {
+  margin: 4px 0 16px;
+  font-size: 13px;
+  color: var(--mute);
+}
+
+.xpaper .prose,
+.xpaper .prose * {
+  font-family: var(--serif);
+}
+.xpaper .prose {
+  font-size: 16.5px;
+  line-height: 1.66;
+  color: var(--ink);
+}
+.xpaper .prose.narrow {
+  max-width: 72ch;
+  padding-top: 18px;
+}
+.xpaper .prose p + p {
+  margin-top: 14px;
+}
+.xpaper .eq {
+  margin: 16px 0;
+  padding: 10px 0 10px 16px;
+  border-left: 2px solid var(--ink);
+  background: none;
+  font-size: 16.5px;
+}
+.xpaper .eq,
+.xpaper .eq * {
+  font-family: var(--serif);
+}
+
+/* ------------------------------ figures ------------------------------ */
+
+.xpaper .og-fig figcaption {
+  margin-top: 18px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--ink2);
+}
+.xpaper .og-fig figcaption b {
+  font-weight: 600;
+  color: var(--ink);
+}
+.xpaper .controls {
+  gap: 14px;
+}
+
+/* specimen with axial and coronal sections in one row */
+.fig-trio {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+}
+/* Layout rule for every figure row: the 3-D view is a large square whose top is the figure's
+   top (level with the text), with the camera close enough that the specimen fills it; the
+   smaller 2-D panels are centred on the specimen, which holds at any rotation. */
+/* every figure starts level with the first line of text: rows pinned to the top, and the
+   3-D views pulled up by the empty margin the camera leaves above the cube */
+.xpaper .og-fig {
+  margin-top: 0 !important;
+}
+.xpaper .models {
+  align-items: start;
+}
+.xpaper .fig-row {
+  align-items: center;
+}
+/* thickness row: colour bar | specimen | section | schematic, specimen as tall as the squares */
+.xpaper .fig-row {
+  grid-template-columns: auto minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr);
+}
+/* views fill their square: no inner margin, so the figure starts level with the text */
+.xpaper .fig.aspect-square:not(.frame2d) {
+  padding: 0;
+}
+.fig-trio .fig.frame2d {
+  width: 100%;
+}
+.fig-l {
+  margin-top: 7px;
+  text-align: center;
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+.fig-title {
+  margin-top: 16px;
+  text-align: center;
+  font-size: 15px;
+  color: var(--ink);
+}
+
+/* two views side by side (DA), and the MIL / SVD sections under them */
+.fig-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px;
+}
+.fig-pair-2d {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+/* model descriptions */
+.mlist {
+  margin: 16px 0;
+}
+.mlist > div {
+  padding: 9px 0 9px 12px;
+  border-left: 2px solid transparent;
+  transition: border-color 0.2s ease;
+}
+.mlist > div.on {
+  border-left-color: var(--acc);
+}
+.mlist dt {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-weight: 600;
+}
+.mlist dt span {
+  font-family: var(--sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--acc);
+}
+.mlist dd {
+  margin-top: 2px;
+  font-size: 15.5px;
+  line-height: 1.55;
+  color: var(--ink2);
+}
+
+/* Figure 1: model library */
+.models {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 24px;
+}
+.models-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px 8px;
+}
+.models-grid button {
+  display: block;
+  padding: 0;
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.models-img {
+  display: block;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 2px;
+  background: #18181b;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  transition: outline-color 0.2s ease;
+}
+.models-img img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  animation: xfade 0.4s ease both;
+}
+.models-img i {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #e7e5e4;
+  animation: xpulse 1.4s ease-in-out infinite;
+}
+.models-grid button.on .models-img {
+  outline-color: var(--acc);
+}
+.models-grid button:focus-visible {
+  outline: none;
+}
+.models-grid button:focus-visible .models-img {
+  outline-color: var(--ink);
+}
+.models-name {
+  display: block;
+  margin-top: 5px;
+  font-size: 10.5px;
+  line-height: 1.3;
+  color: var(--ink2);
+}
+.models-grid button.on .models-name {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.xpaper .refs,
+.xpaper .refs * {
+  font-family: var(--serif);
+}
+.xpaper .refs {
+  max-width: none;
+  font-size: 14px;
+  color: var(--ink2);
+}
+
+@keyframes xfade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes xpulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tab-explore * {
+    animation: none !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .xpaper .og-fig,
+  .xpaper .og-row.wide .og-fig {
+    float: none;
+    width: 100%;
+    margin: 12px 0 22px;
+  }
+}
+
+@media (max-width: 720px) {
+  .xpaper .titleblock {
+    padding-top: 40px;
+  }
+  .fig-trio {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .fig-trio > :first-child {
+    grid-column: 1 / -1;
+  }
+  .models {
+    grid-template-columns: 1fr;
+  }
+}

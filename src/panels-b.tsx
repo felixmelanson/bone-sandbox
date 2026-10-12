@@ -7,18 +7,19 @@ import {
   eigSym3,
   ellipsoidFactor,
   gradTensor,
-  makeField,
-  qField,
   sortedCopy,
   tensorAt,
+  type QField,
   type V3,
 } from "./bone/engine";
 import { addLights, makeCamera, tube, VolumeScene, type Viewable } from "./bone/raymarch";
 import type { Dims } from "./bone/volume";
 import { markStudio, Viewer } from "./bone/views";
 import { disposeScene } from "./bone/dispose";
-import { boneAt, gstRose, mil, svd } from "./bone/fabric";
-import { MilSvdPanel, type FabricData } from "./milsvd";
+import { boneAt, gstRose, mil, roseDA, svd, type Rose } from "./bone/fabric";
+import { mulberry32 } from "./bone/volume";
+import { MilPanel, Placeholder, SvdPanel, type FabricData } from "./milsvd";
+import { getModel, useSpecField, useSpecimen } from "./specimen";
 import { Controls, fmt, Panel, Readout, Readouts, schedule, Seg, Slider, useDebounced, useInView } from "./ui";
 
 const deg = (r: number) => (r * 180) / Math.PI;
@@ -133,90 +134,200 @@ export function drawFabric(ctx: CanvasRenderingContext2D, cam: THREE.Camera, w: 
   // the DA value is shown by the page, not drawn on the specimen
 }
 
-export function DAPanel({ className }: { className?: string }) {
-  const [ref, seen] = useInView<HTMLDivElement>();
-  const [vs, setVs] = useState<VolumeScene | null>(null);
-  const [k, setK] = useState(1);
-  const [psi, setPsi] = useState(32);
-  const lab = useRef<{ local: Float32Array[]; bone: Uint8Array; d: Dims } | null>(null);
-  // fabric ellipse overlay state, read by the view's 2-D overlay
-  const ovState = useRef<{ G: number[]; psi: number; da: number } | null>(null);
-  const [fab, setFab] = useState<{ vals: V3; vec: V3; G: number[]; da: number } | null>(null);
-  const [fabric, setFabric] = useState<FabricData | null>(null);
+/* ---------------- DA: strut axes on frontal views, MIL and SVD ---------------- */
 
+type FabSpec = { q: QField; d: Dims; beta: number; bone: Uint8Array; local: Float32Array[]; G: number[]; da: number };
+
+const D64: Dims = [64, 64, 64];
+
+/** Fabric of one specimen field at the given BV/TV: binary image, local and global structure tensor, DA. */
+function fabSpec(q: QField, sorted: Float32Array, bv: number): FabSpec {
+  const d = D64;
+  const beta = betaForBV(sorted, bv);
+  const bone = binarize(q, beta);
+  const { G, local } = gradTensor(bone, d, 2.5);
+  const e = eigSym3(G);
+  return { q, d, beta, bone, local: local!, G, da: 1 - e.values[2] / e.values[0] };
+}
+
+const texRot = (psi: number) => {
+  const c = Math.cos(rad(psi));
+  const s = Math.sin(rad(psi));
+  return new THREE.Matrix3().set(c, s, 0, -s, c, 0, 0, 0, 1);
+};
+
+/**
+ * Strut axes near the front face: streamlines of the structure tensor's strut direction (the eigenvector of
+ * its smallest eigenvalue), traced through bone from random seeds and fitted with a straight segment. The
+ * longest well separated segments are kept. `M` maps world to texture coordinates, as in the shader.
+ */
+function strutLines(S: FabSpec, M: THREE.Matrix3, n = 8): [V3, V3][] {
+  const { d, bone, local } = S;
+  const Mt = M.clone().transpose();
+  const t = new THREE.Vector3();
+  const vox = (p: THREE.Vector3) => {
+    t.copy(p).applyMatrix3(M);
+    return (wrapI((t.z + 0.5) * d[2] - 0.5, d[2]) * d[1] + wrapI((t.y + 0.5) * d[1] - 0.5, d[1])) * d[0] + wrapI((t.x + 0.5) * d[0] - 0.5, d[0]);
+  };
+  const dirAt = (p: THREE.Vector3) => new THREE.Vector3(...eigSym3(tensorAt(local, vox(p))).vectors[2]).applyMatrix3(Mt).normalize();
+  const inside = (p: THREE.Vector3) => Math.abs(p.x) < 0.47 && Math.abs(p.y) < 0.47 && Math.abs(p.z) < 0.49;
+  const rnd = mulberry32(17);
+  const h = 0.012;
+  const tracks: { pts: THREE.Vector3[]; len: number }[] = [];
+  for (let s = 0; s < 400; s++) {
+    const p0 = new THREE.Vector3(-0.44 + rnd() * 0.88, -0.44 + rnd() * 0.88, 0.3 + rnd() * 0.17);
+    if (!bone[vox(p0)]) continue;
+    const half = (sign: number) => {
+      const out: THREE.Vector3[] = [];
+      const p = p0.clone();
+      let prev = dirAt(p).multiplyScalar(sign);
+      for (let i = 0; i < 70; i++) {
+        const v = dirAt(p);
+        if (v.dot(prev) < 0) v.negate();
+        if (v.dot(prev) < 0.85) break; // the strut turns or ends
+        p.addScaledVector(v, h);
+        if (!inside(p) || !bone[vox(p)]) break;
+        out.push(p.clone());
+        prev = v;
+      }
+      return out;
+    };
+    const pts = [...half(-1).reverse(), p0, ...half(1)];
+    const len = (pts.length - 1) * h;
+    if (len > 0.15) tracks.push({ pts, len });
+  }
+  tracks.sort((a, b) => b.len - a.len);
+  const lines: [V3, V3][] = [];
+  for (const tr of tracks) {
+    if (lines.length >= n) break;
+    const c = tr.pts.reduce((acc, p) => acc.add(p), new THREE.Vector3()).multiplyScalar(1 / tr.pts.length);
+    const ax = tr.pts[tr.pts.length - 1].clone().sub(tr.pts[0]).normalize();
+    let lo = Infinity;
+    let hi = -Infinity;
+    for (const p of tr.pts) {
+      const u = p.clone().sub(c).dot(ax);
+      lo = Math.min(lo, u);
+      hi = Math.max(hi, u);
+    }
+    const A = c.clone().addScaledVector(ax, lo);
+    const B = c.clone().addScaledVector(ax, hi);
+    // as seen from the front: keep only segments that stay clear of those already taken
+    if (lines.some(([P, Q]) => segDist2(A.x, A.y, B.x, B.y, P[0], P[1], Q[0], Q[1]) < 0.075)) continue;
+    lines.push([
+      [A.x, A.y, A.z],
+      [B.x, B.y, B.z],
+    ]);
+  }
+  return lines;
+}
+
+/** Distance between two 2-D segments (0 if they cross). */
+function segDist2(ax: number, ay: number, bx: number, by: number, cx: number, cy: number, dx: number, dy: number) {
+  const ptSeg = (px: number, py: number, x0: number, y0: number, x1: number, y1: number) => {
+    const vx = x1 - x0;
+    const vy = y1 - y0;
+    const t = Math.max(0, Math.min(1, ((px - x0) * vx + (py - y0) * vy) / (vx * vx + vy * vy || 1)));
+    return Math.hypot(px - x0 - t * vx, py - y0 - t * vy);
+  };
+  const side = (x0: number, y0: number, x1: number, y1: number, px: number, py: number) => Math.sign((x1 - x0) * (py - y0) - (y1 - y0) * (px - x0));
+  if (side(ax, ay, bx, by, cx, cy) * side(ax, ay, bx, by, dx, dy) < 0 && side(cx, cy, dx, dy, ax, ay) * side(cx, cy, dx, dy, bx, by) < 0) return 0;
+  return Math.min(ptSeg(ax, ay, cx, cy, dx, dy), ptSeg(bx, by, cx, cy, dx, dy), ptSeg(cx, cy, ax, ay, bx, by), ptSeg(dx, dy, ax, ay, bx, by));
+}
+
+function drawStruts(ctx: CanvasRenderingContext2D, cam: THREE.Camera, w: number, h: number, lines: [V3, V3][]) {
+  const px = (v: V3) => {
+    const p = new THREE.Vector3(...v).project(cam);
+    return [((p.x + 1) / 2) * w, ((1 - p.y) / 2) * h] as const;
+  };
+  const s = Math.min(w, h);
+  ctx.save();
+  ctx.strokeStyle = "#e0322b";
+  ctx.lineWidth = Math.max(2, s * 0.016);
+  ctx.setLineDash([s * 0.042, s * 0.028]);
+  for (const [a, b] of lines) {
+    const [x0, y0] = px(a);
+    const [x1, y1] = px(b);
+    ctx.beginPath();
+    ctx.moveTo(x0, y0);
+    ctx.lineTo(x1, y1);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/** Fixed frontal view of one specimen with its strut axes dashed on top. */
+function FabricView({ spec, psi, label }: { spec: FabSpec | null; psi: number; label: ReactNode }) {
+  const lines = useRef<[V3, V3][]>([]);
+  const [vs] = useState(() => {
+    const v = new VolumeScene([64, 64, 64], { view: [0.03, 0.06, 1], fov: 24, dist: 3.05 });
+    (v as Viewable).overlay = (ctx, cam, w, h) => drawStruts(ctx, cam, w, h, lines.current);
+    return v;
+  });
   useEffect(() => {
-    if (!seen || vs) return;
-    schedule(() => {
-      const v = new VolumeScene([64, 64, 64], { view: [0.16, 0.3, 1], fov: 24, dist: 3.9 });
-      (v as Viewable).overlay = (ctx, cam, w, h) => drawFabric(ctx, cam, w, h, ovState.current);
-      setVs(v);
-    });
-  }, [seen, vs]);
-
-  useDebounced(
-    () => {
-      if (!vs) return;
-      schedule(() => {
-        const d: Dims = [64, 64, 64];
-        const q = qField(makeField(7331, d, [3.8 * k, 3.8, 3.8]), 0.6);
-        const beta = betaForBV(sortedCopy(q), 0.28);
-        const bone = binarize(q, beta);
-        const { G, local } = gradTensor(bone, d, 3.5);
-        const e = eigSym3(G);
-        lab.current = { local: local!, bone, d };
-        vs.setQ(q);
-        vs.set({ uBeta: beta });
-        setFab({ vals: e.values, vec: e.vectors[2], G, da: 1 - e.values[2] / e.values[0] });
-        // MIL / SVD / GST on the same volume, timed, sampled on the continuous field
-        schedule(() => {
-          const t0 = performance.now();
-          const g0 = gradTensor(bone, d, 0).G;
-          const gst = gstRose(g0, performance.now() - t0);
-          const inBone = boneAt(q, d, beta);
-          const inMarrow = (x: number, y: number, z: number) => !inBone(x, y, z);
-          setFabric({ q, d, beta, inBone, gst, mil: mil(inBone, d), svdA: svd(inMarrow, d, 11), svdB: svd(inMarrow, d, 97) });
-        });
-      });
-    },
-    [vs, k],
-    120
-  );
-
-  // rotate the fabric with the loading direction and redraw the fabric ellipse
+    if (!spec) return;
+    vs.setQ(spec.q);
+    vs.set({ uBeta: spec.beta });
+  }, [vs, spec]);
   useEffect(() => {
-    if (!vs || !fab) return;
-    const c = Math.cos(rad(psi));
-    const s = Math.sin(rad(psi));
-    vs.setTexRot(new THREE.Matrix3().set(c, s, 0, -s, c, 0, 0, 0, 1));
-    ovState.current = { G: fab.G, psi, da: fab.da };
+    if (!spec) return;
+    const M = texRot(psi);
+    vs.setTexRot(M);
+    lines.current = strutLines(spec, M);
     vs.onChange();
-  }, [vs, fab, psi]);
+  }, [vs, spec, psi]);
+  return (
+    <div>
+      <div className="fig aspect-square">
+        <Viewer view={spec ? vs : null} interactive={false} alt="Frontal view of the specimen with dashed lines along the struts" />
+      </div>
+      <p className="fig-l">{label}</p>
+    </div>
+  );
+}
 
-  const iso = fab ? fab.da < 0.3 : true;
-  const pv = fab?.vec;
-  const pw = pv ? [Math.cos(rad(psi)) * pv[0] - Math.sin(rad(psi)) * pv[1], Math.sin(rad(psi)) * pv[0] + Math.cos(rad(psi)) * pv[1], pv[2]] : null;
-  const inPlane = pw ? ((deg(Math.atan2(pw[1], pw[0])) % 180) + 180) % 180 : 0;
+export function DAPanel({ className, num = "3.5", fig = 5 }: { className?: string; num?: string; fig?: number }) {
+  const [ref, seen] = useInView<HTMLDivElement>();
+  const S = useSpecimen();
+  const [k, setK] = useState(3.2);
+  const [psi, setPsi] = useState(28);
+  const f = useSpecField(seen, D64, { k });
+  const [spec, setSpec] = useState<FabSpec | null>(null);
+  const [fabric, setFabric] = useState<FabricData | null>(null);
+  const [milR, setMilR] = useState<Rose | null>(null);
+  const [svdR, setSvdR] = useState<{ a: Rose; b: Rose } | null>(null);
+
+  useEffect(() => {
+    if (!f) return;
+    schedule(() => {
+      const sp = fabSpec(f.q, f.sorted, S.bv);
+      setSpec(sp);
+      const t0 = performance.now();
+      const G = gradTensor(sp.bone, sp.d, 0).G;
+      setFabric({ q: sp.q, d: sp.d, beta: sp.beta, inBone: boneAt(sp.q, sp.d, sp.beta), gst: gstRose(G, performance.now() - t0) });
+    });
+  }, [f, S.bv]);
+  // MIL and SVD on the same specimen, one short task each
+  useEffect(() => {
+    if (!fabric) return;
+    const inMarrow = (x: number, y: number, z: number) => !fabric.inBone(x, y, z);
+    let a: Rose | null = null;
+    schedule(() => setMilR(mil(fabric.inBone, fabric.d)));
+    schedule(() => {
+      a = svd(inMarrow, fabric.d, 11);
+    });
+    schedule(() => a && setSvdR({ a, b: svd(inMarrow, fabric.d, 97) }));
+  }, [fabric]);
 
   return (
-    <Panel wide id="da" num="3.5" fig={5} className={className}>
-      <div ref={ref} className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
-        <div>
-          <p className="mb-2 text-[13px] font-bold text-stone-900">Structure tensor fabric (used here)</p>
-          <div className="fig aspect-square">
-            <Viewer view={vs} interactive={false} alt="Frontal view of the specimen with the in-plane fabric ellipse and its principal axis" />
-          </div>
-          <p className="mt-2 text-center text-[14px] leading-snug text-stone-800">
-            {iso ? "Isotropic" : "Anisotropic"} trabeculae, DA → {iso ? "0" : "1"}
-          </p>
-        </div>
-        <div>
-          <p className="mb-2 text-[13px] font-bold text-stone-900">Why not MIL or SVD</p>
-          <MilSvdPanel f={fabric} />
-        </div>
+    <Panel wide id="da" num={num} fig={fig} className={className}>
+      <div ref={ref} className="fig-trio">
+        <FabricView spec={spec} psi={psi} label={<>Structure tensor · DA {spec ? spec.da.toFixed(2) : "…"}</>} />
+        <div>{fabric && milR ? <MilPanel compact f={fabric} rose={milR} /> : <Placeholder />}</div>
+        <div>{fabric && svdR ? <SvdPanel compact f={fabric} a={svdR.a} b={svdR.b} /> : <Placeholder />}</div>
       </div>
       <Controls>
         <Seg
-          label="Preset"
+          label="Organisation"
           value={k === 1 ? "iso" : k === 3.2 ? "aniso" : "custom"}
           onChange={(v) => v !== "custom" && setK(v === "iso" ? 1 : 3.2)}
           options={[
@@ -225,15 +336,14 @@ export function DAPanel({ className }: { className?: string }) {
             { v: "custom", t: "Custom" },
           ]}
         />
-        <Slider label="Fabric alignment" hint="correlation length ratio" value={k} min={1} max={4} step={0.1} onChange={setK} format={(v) => `${v.toFixed(1)} : 1`} />
-        <Slider label="Loading direction" hint="principal axis" value={psi} min={0} max={180} step={1} onChange={setPsi} format={(v) => `${v.toFixed(0)}°`} />
+        <Slider label="Fabric alignment" hint="stretch along the principal axis" value={k} min={1} max={4} step={0.1} onChange={setK} format={(v) => `${v.toFixed(1)} : 1`} />
+        <Slider label="Alignment direction" value={psi} min={0} max={180} step={1} onChange={setPsi} format={(v) => `${v.toFixed(0)}°`} />
         <Readouts>
-          <Readout label="DA" value={fab ? fmt(fab.da, 3) : "-"} accent />
-          <Readout label="λ₁ / λ₂ / λ₃" value={fab ? fab.vals.map((v) => v.toFixed(2)).join(" / ") : "-"} />
-          <Readout label="Principal axis" value={fab ? inPlane.toFixed(0) : "-"} unit="° in plane" />
-          <Readout label="Out of plane" value={pw ? deg(Math.asin(Math.min(1, Math.abs(pw[2])))).toFixed(0) : "-"} unit="°" />
+          <Readout label="DA" value={spec ? fmt(spec.da, 3) : "-"} accent />
+          <Readout label="MIL 1 − min/max" value={milR ? roseDA(milR).toFixed(2) : "-"} />
+          <Readout label="SVD 1 − min/max" value={svdR ? roseDA(svdR.a).toFixed(2) : "-"} />
+          <Readout label="Tensor 1 − min/max" value={fabric ? roseDA(fabric.gst).toFixed(2) : "-"} />
         </Readouts>
-        {fab && <Mat3 m={tensorMat(fab.G)} label="M (fabric)" />}
       </Controls>
     </Panel>
   );
@@ -628,8 +738,9 @@ export function buildNematic(F: FieldScene, q: Float32Array, bone: Uint8Array, d
   return { S: eq.values[0], N, Q, ef: efSum / (cnt || 1), plates: plates / (cnt || 1), rods: rods / (cnt || 1), n: cnt };
 }
 
-export function EFPanel({ className }: { className?: string }) {
+export function EFPanel({ className, num = "3.6", fig = 6 }: { className?: string; num?: string; fig?: number }) {
   const [ref, seen] = useInView<HTMLDivElement>();
+  const S = useSpecimen();
   // the ellipsoid eigen-frame view is switched off for now; flip to "single" to bring it back
   const [mode] = useState<"single" | "field">("field");
   const [single, setSingle] = useState<EllipsoidScene | null>(null);
@@ -657,13 +768,13 @@ export function EFPanel({ className }: { className?: string }) {
       if (!F) return;
       schedule(() => {
         const d: Dims = [48, 48, 48];
-        const q = qField(makeField(9101, d, [3.3 * k, 3.3, 3.3]), 0.9);
-        const beta = betaForBV(sortedCopy(q), 0.26);
+        const q = getModel(S.model, d, k, S.rung).combine(S.a);
+        const beta = betaForBV(sortedCopy(q), S.bv);
         const bone = binarize(q, beta);
         setFs(buildNematic(F, q, bone, d, beta));
       });
     },
-    [field, k],
+    [field, k, S.model, S.rung, S.a, S.bv],
     120
   );
 
@@ -704,7 +815,7 @@ export function EFPanel({ className }: { className?: string }) {
   const major = sph(A.eig.vectors[2]);
 
   return (
-    <Panel id="ef" num="3.6" fig={6} className={className}>
+    <Panel id="ef" num={num} fig={fig} className={className}>
       <div ref={ref} />
       <div className={`mx-auto grid grid-cols-1 gap-2 ${mode === "single" ? "max-w-[480px]" : ""}`}>
         {mode === "single" ? (
@@ -775,18 +886,12 @@ export function EFPanel({ className }: { className?: string }) {
       ) : (
         <Controls>
           <Slider label="Trabecular alignment" hint="isotropic → nematic" value={k} min={1} max={4} step={0.1} onChange={setK} format={(v) => `${v.toFixed(1)} : 1`} />
-          <p className="text-[12px] leading-relaxed text-stone-500">
-            Each glyph is the local fabric ellipsoid from the gradient structure tensor (axes ∝ λ<sub>i</sub>
-            <sup>−½</sup>), coloured by its alignment with the director: P₂(cos β) from bronze (perpendicular) through silver to gold (parallel). Treating the long axes as a nematic director field n, the order tensor Q = ⟨
-            <span className="whitespace-nowrap">3/2 n⊗n − ½ I</span>⟩ gives the order parameter S = λ<sub>max</sub>(Q) = ⟨P₂(cos β)⟩ and the director N. The right view draws N, the eigenframe of Q (λ₁ along N), and the cone of mean deviation β̄ = arccos √((2S + 1)/3) about ±N. Both views share one camera.
-          </p>
           <Readouts>
             <Readout label="Order S" value={fs ? fs.S.toFixed(3) : "-"} accent />
             <Readout label="Director θ, φ" value={Nd ? `${Nd.t.toFixed(0)}°, ${Nd.p.toFixed(0)}°` : "-"} />
             <Readout label="⟨EF⟩" value={fs ? fs.ef.toFixed(3) : "-"} />
             <Readout label="Plates / rods" value={fs ? `${(fs.plates * 100).toFixed(0)} / ${(fs.rods * 100).toFixed(0)}` : "-"} unit="%" />
           </Readouts>
-          {fs && <Mat3 m={tensorMat(fs.Q)} label="Q" />}
         </Controls>
       )}
     </Panel>

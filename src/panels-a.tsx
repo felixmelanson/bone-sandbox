@@ -5,20 +5,19 @@ import {
   connectivity,
   binarize,
   bvForBeta,
-  makeField,
   phaseStats,
-  qField,
+  renderCoronal,
   renderSlice,
   shadeBinary,
   shadeGrey,
   shadeLT,
-  sortedCopy,
   VOX_MM,
 } from "./bone/engine";
-import { planeOutline, VolumeScene } from "./bone/raymarch";
+import { coronalOutline, planeOutline, VolumeScene } from "./bone/raymarch";
 import { localThickness, smoothInPhase, type Dims } from "./bone/volume";
 import { prepareSchematics, SeparationSchematic, ThicknessSchematic } from "./bone/schematic";
 import { Viewer } from "./bone/views";
+import { useSpecBV, useSpecField, useSpecimen } from "./specimen";
 import {
   Controls,
   fmt,
@@ -28,7 +27,6 @@ import {
   Readout,
   Readouts,
   schedule,
-  Seg,
   SliceCanvas,
   Slider,
   Toggle,
@@ -39,55 +37,66 @@ import {
 } from "./ui";
 
 const R = 220;
+const D64: Dims = [64, 64, 64];
+/** camera distance for the figure views: close enough that the cube fills its square */
+const VIEW_DIST = 3.35;
 const vol = (d: Dims) => d[0] * d[1] * d[2] * VOX_MM ** 3;
 const pct = (v: number) => `${(v * 100).toFixed(1)} %`;
 
 /* =============================== BV/TV ============================== */
 
-export function BVPanel({ className }: { className?: string }) {
+export function BVPanel({ className, num = "3.1", fig = 1 }: { className?: string; num?: string; fig?: number }) {
   const [ref, seen] = useInView<HTMLDivElement>();
-  const lab = useRef<{ q: Float32Array; sorted: Float32Array; d: Dims } | null>(null);
+  const f = useSpecField(seen, D64);
   const [vs, setVs] = useState<VolumeScene | null>(null);
-  const [bv, setBv] = useState(0.24);
+  const [bv, setBv] = useSpecBV();
   const [cut, setCut] = useState(false);
   const [px, setPx] = useRaster();
+  const [pxC, setPxC] = useRaster();
 
   useEffect(() => {
-    if (!seen || lab.current) return;
-    schedule(() => {
-      const d: Dims = [72, 72, 72];
-      const q = qField(makeField(1307, d, [4.2, 4.2, 4.2]), 0.85);
-      lab.current = { q, sorted: sortedCopy(q), d };
-      const v = new VolumeScene(d);
-      v.setQ(q);
-      v.scene.add(planeOutline(0));
-      setVs(v);
-    });
-  }, [seen]);
+    if (!f) return;
+    if (vs) return vs.setQ(f.q);
+    const v = new VolumeScene(D64, { dist: VIEW_DIST });
+    v.setQ(f.q);
+    v.scene.add(planeOutline(0), coronalOutline(0, 0.6, 0x000000, 0.3, 0.006));
+    setVs(v);
+  }, [f, vs]);
 
-  const L = lab.current;
-  const beta = vs && L ? betaForBV(L.sorted, bv) : 0;
+  const L = f ? { q: f.q, sorted: f.sorted, d: D64 } : null;
+  const beta = L ? betaForBV(L.sorted, bv) : 0;
 
   useEffect(() => {
     vs?.set({ uBeta: beta, uCutOn: cut ? 1 : 0, uCut: 0 });
   }, [vs, beta, cut]);
 
   useFrame(() => {
-    if (L && vs) setPx(renderSlice(L.q, L.d, beta, (L.d[1] - 1) / 2, R, shadeBinary));
-  }, [vs, beta]);
+    if (!L) return;
+    setPx(renderSlice(L.q, L.d, beta, (L.d[1] - 1) / 2, R, shadeBinary));
+    setPxC(renderCoronal(L.q, L.d, beta, (L.d[2] - 1) / 2, R, shadeBinary));
+  }, [f, beta]);
 
   const real = L ? bvForBeta(L.sorted, beta) : bv;
   const TV = L ? vol(L.d) : 0;
 
   return (
-    <Panel id="bv-tv" num="3.1" fig={1} className={className}>
-      <div ref={ref} className="grid grid-cols-[1.3fr_1fr] items-center gap-4 sm:gap-7">
+    <Panel wide id="bv-tv" num={num} fig={fig} className={className}>
+      <div ref={ref} className="fig-trio">
         <div className="fig aspect-square">
-          <Viewer view={vs} alt="Raymarched micro-CT volume of trabecular bone with the analysis plane" />
+          <Viewer view={vs} hint={false} alt="Raymarched micro-CT volume of trabecular bone with the analysis plane" />
         </div>
-        <Frame>
-          <SliceCanvas pixels={px} R={R} alt="Binarised section at the analysis plane: bone white, marrow black" />
-        </Frame>
+        <div>
+          <Frame>
+            <SliceCanvas pixels={px} R={R} alt="Binarised axial section at the analysis plane: bone white, marrow black" />
+          </Frame>
+          <p className="fig-l">Axial</p>
+        </div>
+        <div>
+          <Frame>
+            <SliceCanvas pixels={pxC} R={R} alt="Binarised coronal section: bone white, marrow black" />
+          </Frame>
+          <p className="fig-l">Coronal</p>
+        </div>
       </div>
       <Controls>
         <Slider label="Segmentation threshold" hint="target BV/TV" value={bv} min={0.06} max={0.5} step={0.005} onChange={setBv} format={pct} />
@@ -109,87 +118,66 @@ export function BVPanel({ className }: { className?: string }) {
 
 /* ============================== Conn.D ============================== */
 
-/* Three stages of plate-to-rod loss. Conn.D counts loops, so it is not monotonic in "health":
-   intact plates have few loops, perforation adds one per hole, fragmentation removes them again. */
-const PRESETS = {
-  intact: { a: 0.25, bv: 0.38, t: "Intact plates" },
-  perforated: { a: 0.6, bv: 0.25, t: "Perforated plates" },
-  fragmented: { a: 1.9, bv: 0.11, t: "Fragmented rods" },
-};
-type PresetKey = keyof typeof PRESETS;
-
-export function ConnPanel({ className }: { className?: string }) {
+export function ConnPanel({ className, num = "3.2", fig = 2 }: { className?: string; num?: string; fig?: number }) {
   const [ref, seen] = useInView<HTMLDivElement>();
-  const lab = useRef<{ f: ReturnType<typeof makeField>; d: Dims } | null>(null);
+  const S = useSpecimen();
+  const [a, setA] = useState(S.a);
+  useEffect(() => setA(S.a), [S.model, S.a]);
+  const [bv, setBv] = useSpecBV();
+  const f = useSpecField(seen, D64, { a });
   const [vs, setVs] = useState<VolumeScene | null>(null);
-  const [a, setA] = useState(PRESETS.intact.a);
-  const [bv, setBv] = useState(PRESETS.intact.bv);
   const [px, setPx] = useRaster();
+  const [pxC, setPxC] = useRaster();
   const [m, setM] = useState<{ chi: number; b0: number; conn: number; cd: number; bv: number } | null>(null);
 
   useEffect(() => {
-    if (!seen || lab.current) return;
-    schedule(() => {
-      const d: Dims = [64, 64, 64];
-      lab.current = { f: makeField(5821, d, [4.0, 4.0, 4.0]), d };
-      setVs(new VolumeScene(d));
-    });
-  }, [seen]);
+    if (!f) return;
+    if (vs) return vs.setQ(f.q);
+    const v = new VolumeScene(D64, { dist: VIEW_DIST });
+    v.setQ(f.q);
+    v.scene.add(planeOutline(0), coronalOutline(0, 0.6, 0x000000, 0.3, 0.006));
+    setVs(v);
+  }, [f, vs]);
 
   useDebounced(
     () => {
-      const L = lab.current;
-      if (!L || !vs) return;
-      const q = qField(L.f, a);
-      const sorted = sortedCopy(q);
-      const beta = betaForBV(sorted, bv);
-      const { chi, b0, b1: conn } = connectivity(binarize(q, beta), L.d);
-      vs.setQ(q);
+      if (!f || !vs) return;
+      const beta = betaForBV(f.sorted, bv);
+      const { chi, b0, b1: conn } = connectivity(binarize(f.q, beta), D64);
       vs.set({ uBeta: beta });
-      setPx(renderSlice(q, L.d, beta, (L.d[1] - 1) / 2, R, shadeGrey([140, 140, 146])));
-      setM({ chi, b0, conn, cd: conn / vol(L.d), bv: bvForBeta(sorted, beta) });
+      setPx(renderSlice(f.q, D64, beta, (D64[1] - 1) / 2, R, shadeGrey([140, 140, 146])));
+      setPxC(renderCoronal(f.q, D64, beta, (D64[2] - 1) / 2, R, shadeGrey([140, 140, 146])));
+      setM({ chi, b0, conn, cd: conn / vol(D64), bv: bvForBeta(f.sorted, beta) });
     },
-    [vs, a, bv],
+    [vs, f, bv],
     30
   );
 
-  const preset: PresetKey | "custom" = (Object.keys(PRESETS) as PresetKey[]).find((k) => PRESETS[k].a === a && PRESETS[k].bv === bv) ?? "custom";
-
   return (
-    <Panel id="conn-d" num="3.2" fig={2} className={className}>
-      <div ref={ref} className="grid grid-cols-[1.3fr_1fr] items-center gap-4 sm:gap-7">
+    <Panel wide id="conn-d" num={num} fig={fig} className={className}>
+      <div ref={ref} className="fig-trio">
         <div className="fig aspect-square">
-          <Viewer view={vs} alt="Trabecular network whose connectivity changes with the controls" />
+          <Viewer view={vs} hint={false} alt="Trabecular network whose connectivity changes with the controls" />
         </div>
         <div>
-          <p className="mb-2 text-center text-[15px] text-stone-800">{preset === "custom" ? "Custom structure" : PRESETS[preset].t}</p>
           <Frame>
-            <SliceCanvas pixels={px} R={R} alt="Grey section through the network" />
+            <SliceCanvas pixels={px} R={R} alt="Grey axial section through the network" />
           </Frame>
-          <p className="mt-2 text-center text-[19px] text-stone-900">
-            Conn.D = {m ? fmt(m.cd, 2) : "-"} mm<sup>−3</sup>
-          </p>
+          <p className="fig-l">Axial</p>
+        </div>
+        <div>
+          <Frame>
+            <SliceCanvas pixels={pxC} R={R} alt="Grey coronal section through the network" />
+          </Frame>
+          <p className="fig-l">Coronal</p>
         </div>
       </div>
       <Controls>
-        <Seg
-          label="Preset"
-          value={preset}
-          onChange={(v) => {
-            if (v === "custom") return;
-            setA(PRESETS[v].a);
-            setBv(PRESETS[v].bv);
-          }}
-          options={[
-            ...(Object.keys(PRESETS) as PresetKey[]).map((k) => ({ v: k as PresetKey | "custom", t: PRESETS[k].t })),
-            { v: "custom", t: "Custom" },
-          ]}
-        />
         <Slider label="Plate perforation" hint="plates → rods" value={a} min={0} max={2.4} step={0.05} onChange={setA} format={(v) => v.toFixed(2)} />
         <Slider label="Bone volume fraction" value={bv} min={0.06} max={0.45} step={0.01} onChange={setBv} format={pct} />
         <Readouts>
           <Readout label="Conn.D" value={m ? fmt(m.cd, 2) : "-"} unit="mm⁻³" accent />
-          <Readout label="χ (purified) / particles" value={m ? `${m.chi} / ${m.b0}` : "-"} />
+          <Readout label="χ, purified" value={m ? String(m.chi).replace("-", "−") : "-"} />
           <Readout label="Conn β₁" value={m ? String(m.conn) : "-"} />
           <Readout label="BV/TV" value={m ? (m.bv * 100).toFixed(1) : "-"} unit="%" />
         </Readouts>
@@ -213,13 +201,13 @@ const STRUT_R: Record<Kind, (bv: number) => number> = {
   sp: (bv) => 0.75 + (bv - 0.1) * 2.8,
 };
 
-export function ThicknessPanel({ kind, className }: { kind: Kind; className?: string }) {
+export function ThicknessPanel({ kind, className, num, fig }: { kind: Kind; className?: string; num?: string; fig?: number }) {
   const C = CFG[kind];
   const [ref, seen] = useInView<HTMLDivElement>();
   const lab = useRef<{ q: Float32Array; sorted: Float32Array; d: Dims; lt: Float32Array | null; beta: number } | null>(null);
   const [vs, setVs] = useState<VolumeScene | null>(null);
   const [sch, setSch] = useState<ThicknessSchematic | SeparationSchematic | null>(null);
-  const [bv, setBv] = useState(C.bv);
+  const [bv, setBv] = useSpecBV();
   const [sweep, setSweep] = useState<number | null>(null);
   // colour bar matches the height of the section frame beside it
   const sliceBox = useRef<HTMLDivElement>(null);
@@ -239,23 +227,22 @@ export function ThicknessPanel({ kind, className }: { kind: Kind; className?: st
   const [st, setSt] = useState<null | (ReturnType<typeof phaseStats> & { bv: number })>(null);
   const [px, setPx] = useRaster();
 
+  // the specimen chosen in section 1; the view is made once and refilled when the specimen changes
+  const f = useSpecField(seen, D64);
   useEffect(() => {
-    if (!seen || lab.current) return;
+    if (!f) return;
+    lab.current = { q: f.q, sorted: f.sorted, d: D64, lt: null, beta: 0 };
+    if (vs) return vs.setQ(f.q);
+    const v = new VolumeScene(D64, { ramp: C.stops, dist: VIEW_DIST });
+    v.setQ(f.q);
+    v.set({ uMode: 1, uPhase: C.fg ? 1 : -1, uAlpha: 1 });
+    v.scene.add(planeOutline(0));
+    setVs(v);
     schedule(() => {
-      const d: Dims = [64, 64, 64];
-      const q = qField(makeField(C.seed, d, [C.s, C.s, C.s]), C.a);
-      lab.current = { q, sorted: sortedCopy(q), d, lt: null, beta: 0 };
-      const v = new VolumeScene(d, { ramp: C.stops });
-      v.setQ(q);
-      v.set({ uMode: 1, uPhase: C.fg ? 1 : -1, uAlpha: 1 });
-      v.scene.add(planeOutline(0));
-      setVs(v);
-      schedule(() => {
-        prepareSchematics(); // shared distance field, built once for both insets
-        setSch(kind === "th" ? new ThicknessSchematic() : new SeparationSchematic());
-      });
+      prepareSchematics(); // shared distance field, built once for both insets
+      setSch(kind === "th" ? new ThicknessSchematic() : new SeparationSchematic());
     });
-  }, [seen, C, kind]);
+  }, [f, vs, C, kind]);
 
   // Fast step, every slider frame: resegment the specimen on the GPU and resize the schematic struts and spheres
   useFrame(() => {
@@ -286,7 +273,7 @@ export function ThicknessPanel({ kind, className }: { kind: Kind; className?: st
         setBusy(false);
       });
     },
-    [vs, bv],
+    [vs, f, bv],
     160
   );
 
@@ -327,10 +314,10 @@ export function ThicknessPanel({ kind, className }: { kind: Kind; className?: st
     const metric = kind === "th" ? "Tb.Th" : "Tb.Sp";
 
   return (
-    <Panel wide id={kind === "th" ? "tb-th" : "tb-sp"} num={kind === "th" ? "3.3" : "3.4"} fig={kind === "th" ? 3 : 4} className={className}>
+    <Panel wide id={kind === "th" ? "tb-th" : "tb-sp"} num={num ?? (kind === "th" ? "3.3" : "3.4")} fig={fig ?? (kind === "th" ? 3 : 4)} className={className}>
       {/* one horizontal row: colour bar, specimen, section, sphere-fitting schematic */}
-      <div ref={ref} className="grid grid-cols-[auto_1fr_1fr] items-center gap-x-4 gap-y-5 lg:grid-cols-[auto_1.15fr_1fr_1fr] lg:gap-x-6">
-        <div ref={barBox} className="row-span-2 lg:row-span-1" style={{ height: barH || 200 }}>
+      <div ref={ref} className="fig-row grid gap-x-4">
+        <div ref={barBox} style={{ height: barH || 200 }}>
           <ColorBar
             stops={C.stops}
             max={C.max}
@@ -355,7 +342,7 @@ export function ThicknessPanel({ kind, className }: { kind: Kind; className?: st
             <SliceCanvas pixels={px} R={R} alt={`Section at the analysis plane coloured by local ${kind === "th" ? "thickness" : "separation"}`} />
           </Frame>
         </div>
-        <div className="col-span-2 lg:col-span-1">
+        <div>
           <Frame>
             <Viewer
               view={sch}
@@ -366,9 +353,6 @@ export function ThicknessPanel({ kind, className }: { kind: Kind; className?: st
           </Frame>
         </div>
       </div>
-      <p className="mx-auto mt-5 max-w-[60ch] text-center text-[16px] leading-snug text-stone-800">
-        {C.label} is calculated as the diameter of the largest sphere that fits inside each {kind === "th" ? "trabecula of bone" : "pore"}.
-      </p>
 
       <Controls>
         <Slider

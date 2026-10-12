@@ -69,7 +69,7 @@ export function useFrame(fn: () => void, deps: unknown[]) {
 
 /* ------------------------------- layout ----------------------------- */
 
-/** Metric body as in the original layout: text on the left, figure and controls on the right. */
+/** One paper row: heading, then the figure (floated right on wide screens) with the text wrapping around and below it. No caption: the text carries it. */
 export function Panel({
   id,
   num,
@@ -89,20 +89,17 @@ export function Panel({
   const t = METRICS[id];
   return (
     <section id={id} aria-labelledby={`${id}-t`} className={`og-row ${wide ? "wide" : ""} ${className}`}>
-      <div className="og-text">
+      <header className="og-head">
         <h3 id={`${id}-t`} className="og-h">
           <span className="secnum">{num}</span>
           {t.title}
         </h3>
         <p className="og-abbr">{t.abbr}</p>
-        <div className="prose">{t.body}</div>
-      </div>
-      <figure className="og-fig">
+      </header>
+      <figure className="og-fig" aria-label={`Figure ${fig}`}>
         {children}
-        <figcaption>
-          <b>Figure {fig}.</b> {t.caption}
-        </figcaption>
       </figure>
+      <div className="og-text prose">{t.short ?? t.body}</div>
     </section>
   );
 }

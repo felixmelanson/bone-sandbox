@@ -1,7 +1,7 @@
 /* =====================================================================
-   MIL and SVD, drawn the way they are measured, next to the structure
-   tensor used on this site. All three are computed on the same volume in
-   the plane of the analysis section (x-z).
+   MIL and SVD, drawn the way they are measured, on the analysis section
+   (x-z plane), each compared with the structure tensor of the same volume.
+   Both sit in the DA figure, under the frontal views.
      MIL  parallel test lines at angle theta; every bone entry is counted;
           MIL(theta) = line length / entries. The sweep traces the rose.
      SVD  random points in bone; rays run until they leave the bone;
@@ -19,9 +19,6 @@ export type FabricData = {
   d: Dims;
   beta: number;
   inBone: (x: number, y: number, z: number) => boolean;
-  mil: Rose;
-  svdA: Rose;
-  svdB: Rose;
   gst: Rose;
 };
 
@@ -96,7 +93,7 @@ function usePlay(ms: number) {
 
 /* -------------------------------- MIL ------------------------------- */
 
-function MilPanel({ f }: { f: FabricData }) {
+export function MilPanel({ f, rose, compact = false }: { f: FabricData; rose: Rose; compact?: boolean }) {
   const sec = useSection(f, GOLD, NAVY);
   const { box, t, play } = usePlay(4200);
   const th = t * Math.PI;
@@ -165,7 +162,7 @@ function MilPanel({ f }: { f: FabricData }) {
       ctx.lineTo(hx - w * 0.025 * Math.cos(a + 0.5), hz - w * 0.025 * Math.sin(a + 0.5));
       ctx.fill();
       ctx.restore();
-      ctx.font = `${Math.round(w * 0.05)}px Arial, sans-serif`;
+      ctx.font = `500 ${Math.round(w * 0.042)}px Inter, system-ui, sans-serif`;
       ctx.fillStyle = "#fff";
       ctx.fillText(`θ ${Math.round((th * 180) / Math.PI)}° · ${entries} entries`, w * 0.04, w * 0.95);
     },
@@ -173,16 +170,14 @@ function MilPanel({ f }: { f: FabricData }) {
   );
   return (
     <div ref={box}>
-      <canvas ref={cv} className="mx-auto block aspect-square w-[86%] rounded-[3px]" role="img" aria-label="Section with parallel MIL test lines; white dots mark where a line enters bone" />
-      <div className="mx-auto mt-1.5 flex w-[86%] items-center justify-between text-[12px] text-stone-600">
-        <span>
-          <b className="text-stone-900">MIL</b> test lines, bone gold
-        </span>
+      <canvas ref={cv} className={`mx-auto block aspect-square ${compact ? "w-full" : "w-[86%]"} rounded-[3px]`} role="img" aria-label="Section with parallel MIL test lines; white dots mark where a line enters bone" />
+      <div className={`mx-auto mt-1.5 flex ${compact ? "w-full" : "w-[86%]"} items-center justify-between text-[12px] text-stone-600`}>
+        <span>{compact ? <span className="fig-l">MIL</span> : <><b className="text-stone-900">MIL</b> test lines, bone gold</>}</span>
         <button type="button" onClick={play} className="rounded-full border border-stone-300 px-2.5 py-0.5 text-[11.5px] hover:bg-stone-100">
           ▶ sweep
         </button>
       </div>
-      <RoseMini rose={f.mil} upto={t} color="#B07A22" label="MIL(θ)" />
+      {!compact && <RoseMini rose={rose} second={f.gst} upto={t} color="#B07A22" label="MIL(θ) solid, structure tensor dashed" />}
     </div>
   );
 }
@@ -195,7 +190,7 @@ const SVD_BONE: [number, number, number] = [150, 150, 152];
 const SVD_MARROW: [number, number, number] = [14, 14, 16];
 
 /** Marrow star volume: rays from points in marrow run until they hit bone (as in the classic star volume figure). */
-function SvdPanel({ f }: { f: FabricData }) {
+export function SvdPanel({ f, a, b, compact = false }: { f: FabricData; a: Rose; b: Rose; compact?: boolean }) {
   const sec = useSection(f, SVD_BONE, SVD_MARROW);
   const [seed, setSeed] = useState(3);
   const { box, t, play } = usePlay(2200);
@@ -239,9 +234,10 @@ function SvdPanel({ f }: { f: FabricData }) {
         const e = 1 - (1 - k) ** 3;
         ctx.strokeStyle = "#e0322b";
         ctx.lineWidth = Math.max(1.6, w / 170);
-        for (let j = 0; j < RAYS; j++) {
-          const th = (j / RAYS) * Math.PI;
-          const [a, b] = p.rays[j];
+        const nr = compact ? RAYS / 2 : RAYS;
+        for (let j = 0; j < nr; j++) {
+          const th = (j / nr) * Math.PI;
+          const [a, b] = p.rays[compact ? j * 2 : j];
           const ux = Math.cos(th);
           const uz = Math.sin(th);
           ctx.beginPath();
@@ -259,11 +255,9 @@ function SvdPanel({ f }: { f: FabricData }) {
   );
   return (
     <div ref={box}>
-      <canvas ref={cv} className="mx-auto block aspect-square w-[86%] rounded-[3px]" role="img" aria-label="Section with star volume rays from points in the marrow, each ray running until it meets bone" />
-      <div className="mx-auto mt-1.5 flex w-[86%] items-center justify-between text-[12px] text-stone-600">
-        <span>
-          <b className="text-stone-900">SVD</b> stars in marrow (black)
-        </span>
+      <canvas ref={cv} className={`mx-auto block aspect-square ${compact ? "w-full" : "w-[86%]"} rounded-[3px]`} role="img" aria-label="Section with star volume rays from points in the marrow, each ray running until it meets bone" />
+      <div className={`mx-auto mt-1.5 flex ${compact ? "w-full" : "w-[86%]"} items-center justify-between text-[12px] text-stone-600`}>
+        <span>{compact ? <span className="fig-l">SVD</span> : <><b className="text-stone-900">SVD</b> stars in marrow (black)</>}</span>
         <button
           type="button"
           onClick={() => {
@@ -275,7 +269,7 @@ function SvdPanel({ f }: { f: FabricData }) {
           ↻ new points
         </button>
       </div>
-      <RoseMini rose={f.svdA} second={f.svdB} upto={1} color="#5B5F66" label="SVD(θ), marrow, two point sets" />
+      {!compact && <RoseMini rose={a} second={b} upto={1} color="#5B5F66" label="SVD(θ), marrow, two point sets" />}
     </div>
   );
 }
@@ -315,17 +309,4 @@ function RoseMini({ rose, second, upto, color, label }: { rose: Rose; second?: R
   );
 }
 
-export function MilSvdPanel({ f }: { f: FabricData | null }) {
-  if (!f) return <p className="text-[12px] text-stone-500">Computing MIL and SVD on this volume…</p>;
-  return (
-    <div>
-      <div className="grid gap-5 sm:grid-cols-2">
-        <MilPanel f={f} />
-        <SvdPanel f={f} />
-      </div>
-      <div className="mt-3 border-t border-stone-200 pt-2">
-        <RoseMini rose={f.gst} upto={1} color="#1c1917" label="Gradient structure tensor (used here), every voxel in one pass" />
-      </div>
-    </div>
-  );
-}
+export const Placeholder = () => <div className="mx-auto aspect-square w-[86%] animate-pulse rounded-[3px] bg-stone-200/70" />;

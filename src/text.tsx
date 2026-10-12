@@ -76,7 +76,8 @@ export const NEW_METRICS: ReactNode = (
 
 /* --------------------------- metric rows ---------------------------- */
 
-export type MetricText = { title: ReactNode; abbr: ReactNode; body: ReactNode; caption: ReactNode };
+/** `short` is the concise body used on the paper page; `body` is the full text used by the sandbox. */
+export type MetricText = { title: ReactNode; abbr: ReactNode; body: ReactNode; short?: ReactNode; caption: ReactNode };
 
 export const METRICS: Record<string, MetricText> = {
   "bv-tv": {
@@ -95,8 +96,8 @@ export const METRICS: Record<string, MetricText> = {
     ),
     caption: (
       <>
-        Left: synthetic specimen with the analysis plane outlined in black. Right: binarised section at the analysis plane, bone white and marrow
-        black. Cutting the specimen exposes the section in 3D.
+        Left: synthetic specimen with the axial analysis plane outlined in black and the coronal plane in grey. Centre and right: binarised axial
+        and coronal sections through the centre, bone white and marrow black. Cutting the specimen exposes the axial section in 3D.
       </>
     ),
   },
@@ -130,7 +131,7 @@ export const METRICS: Record<string, MetricText> = {
         </p>
       </>
     ),
-    caption: <>Left: specimen whose perforation and BV/TV are set by the controls. Right: section through the same network. Conn.D is computed on the purified image.</>,
+    caption: <>Left: specimen whose perforation and BV/TV are set by the controls. Centre and right: axial and coronal sections through the same network. Conn.D is computed on the purified image.</>,
   },
   "tb-th": {
     title: "Trabecular thickness",
@@ -163,7 +164,7 @@ export const METRICS: Record<string, MetricText> = {
           <li>Each voxel is assigned the diameter 2<i>D</i>(<b>x</b>) of the largest ridge sphere that covers it.</li>
         </ol>
         <p>
-          The lower panel of Figure 3 illustrates the definition on a single idealised trabecula: each sphere is centred on the strut axis and its
+          The right panel of the figure illustrates the definition on a single idealised trabecula: each sphere is centred on the strut axis and its
           diameter equals the local strut thickness exactly, so the chain shrinks where the strut tapers. The slider thickens the struts of both the
           illustration and the specimen; the spheres and the colour map follow. Values approaching the voxel size
           are poorly resolved, which constrains what 65 µm data can report for thin rods.
@@ -172,7 +173,7 @@ export const METRICS: Record<string, MetricText> = {
     ),
     caption: (
       <>
-        Top: colour bar and histogram of local thickness, specimen coloured by local thickness, and the section at the analysis plane. Bottom:
+        Left to right: colour bar and histogram of local thickness, specimen coloured by local thickness, section at the analysis plane, and a
         schematic trabecula with its chain of maximal inscribed spheres; each sphere diameter is the local Tb.Th.
       </>
     ),
@@ -194,7 +195,7 @@ export const METRICS: Record<string, MetricText> = {
         </Eq>
         <p>
           The distance transform is now taken from each marrow voxel to the nearest bone voxel, and the maximal spheres sit on the medial axis of
-          the pores. The lower panel of Figure 4 illustrates this on idealised struts: each sphere sits where the clearance to the surrounding struts
+          the pores. The right panel of the figure illustrates this on idealised struts: each sphere sits where the clearance to the surrounding struts
           is largest, and its radius is that clearance minus the strut radius. Thickening the struts encroaches on the marrow space, and every
           sphere shrinks by exactly the added strut radius.
         </p>
@@ -205,7 +206,7 @@ export const METRICS: Record<string, MetricText> = {
         </p>
       </>
     ),
-    caption: <>Layout as in Figure 3, with the marrow phase measured instead of bone. Bottom: schematic pores with the largest sphere that fits in each.</>,
+    caption: <>Layout as for Tb.Th, with the marrow phase measured instead of bone. Right: schematic pores with the largest sphere that fits in each.</>,
   },
   da: {
     title: "Degree of anisotropy",
@@ -223,7 +224,7 @@ export const METRICS: Record<string, MetricText> = {
           Some software reports λ<sub>max</sub> / λ<sub>min</sub>, which ranges from 1 upward; the two conventions are not interchangeable.
         </p>
         <p>
-          The right of Figure 5 computes the two classical alternatives on the same volume. MIL counts bone and marrow boundary crossings along test
+          Sections 3.6 and 3.7 compute the two classical alternatives on a specimen of the same kind. MIL counts bone and marrow boundary crossings along test
           lines, so it only sees the interface; anisotropy that does not change interface density is invisible to it (Odgaard, 1997). SVD is volume
           based: from random points in the marrow, rays run until they meet bone, and the cubed intercepts are averaged by direction (the marrow
           star volume). It needs many points per direction, and a few large marrow spaces dominate the cubed lengths in a specimen this small. The
@@ -231,7 +232,7 @@ export const METRICS: Record<string, MetricText> = {
         </p>
       </>
     ),
-    caption: <>Left: fixed frontal view of the specimen with the in-plane fabric ellipse (long axis along the struts, axes from the structure tensor eigenvalues) and its principal axis; the loading direction slider rotates the fabric. Right: in-plane roses from MIL, SVD (two random point sets, solid and dashed) and the gradient structure tensor on the same volume, with their anisotropy and computation time.</>,
+    caption: <>Fixed frontal view of the specimen with the in-plane fabric ellipse (long axis along the struts, axes from the structure tensor eigenvalues) and its principal axis; the loading direction slider rotates the fabric.</>,
   },
   mil: {
     title: "Mean intercept length",
@@ -251,7 +252,7 @@ export const METRICS: Record<string, MetricText> = {
         </p>
       </>
     ),
-    caption: <>Frontal view of the specimen. Black test lines cross the cut face at angle θ; red dots mark each entry into bone. The rose collects MIL over all θ.</>,
+    caption: <>Analysis section, bone gold and marrow navy. White test lines cross the section at angle θ and sweep through 180°; white dots mark each entry into bone. The rose collects MIL over all θ (solid) beside the structure tensor rose of the same volume (dashed).</>,
   },
   svd: {
     title: "Star volume distribution",
@@ -266,11 +267,11 @@ export const METRICS: Record<string, MetricText> = {
         <p>
           Because intercepts are cubed, a few long rays through large marrow spaces dominate the estimate, and it needs many points per direction to be
           stable; new points on the same specimen visibly change the stars. The structure tensor avoids both problems by using every voxel in one pass.
-          Here the stars are drawn in the plane of the cut face, so V* is a section estimate.
+          Here the stars are drawn in the plane of the analysis section.
         </p>
       </>
     ),
-    caption: <>Frontal view of the specimen. From points in the marrow on the cut face, red rays run until they meet bone; their cubed lengths give V*.</>,
+    caption: <>Analysis section, marrow black and bone grey. From the marrow points with the most room, red rays run until they meet bone. The rose shows SVD(θ) for two independent sets of marrow points (solid and dashed); their disagreement is the sampling noise.</>,
   },
   ef: {
     title: "Ellipsoid factor",
@@ -285,7 +286,7 @@ export const METRICS: Record<string, MetricText> = {
           EF = <i>a</i>/<i>b</i> − <i>b</i>/<i>c</i>
         </Eq>
         <p>
-          Oblate, plate like ellipsoids give EF → −1; prolate, rod like ellipsoids give EF → +1. Figure 6 approximates local shape with structure tensor ellipsoids rather than the maximal ellipsoid fitting of BoneJ,
+          Oblate, plate like ellipsoids give EF → −1; prolate, rod like ellipsoids give EF → +1. The figure approximates local shape with structure tensor ellipsoids rather than the maximal ellipsoid fitting of BoneJ,
           and adds the nematic order parameter <i>S</i> of the trabecular director field.
         </p>
       </>
@@ -293,6 +294,110 @@ export const METRICS: Record<string, MetricText> = {
     caption: <>The specimen nearly transparent, with local fabric ellipsoids in bronze, silver and gold by alignment with the director N̂, the eigenframe of Q, and the gold cones of mean deviation β̄ about ±N̂.</>,
   },
 };
+
+/* ------------------------ concise paper text ------------------------- */
+
+const PAPER: Record<string, Pick<MetricText, "short" | "caption">> = {
+  "bv-tv": {
+    short: (
+      <>
+        <p>The fraction of the volume of interest occupied by bone after segmentation.</p>
+        <Eq>BV/TV = N<sub>bone</sub> / N<sub>total</sub></Eq>
+        <p>
+          It is the most reported parameter and the most threshold dependent. The slider moves the threshold on an unchanged greyscale field; every
+          other metric is computed downstream of it.
+        </p>
+      </>
+    ),
+    caption: <>Specimen with the axial (black) and coronal (grey) planes, and the binarised section at each; bone white, marrow black.</>,
+  },
+  "conn-d": {
+    short: (
+      <>
+        <p>
+          Connectivity counts redundant loops: the trabeculae that can be cut without disconnecting the network. It follows from the Euler
+          characteristic χ of the purified image (Odgaard &amp; Gundersen, 1993).
+        </p>
+        <Eq>
+          χ = β<sub>0</sub> − β<sub>1</sub> + β<sub>2</sub>&emsp;Conn.D = β<sub>1</sub> / TV
+        </Eq>
+        <p>
+          Conn.D is not monotonic in bone quality. Perforating a plate adds a loop per hole, so it rises in early plate loss and falls only once rods
+          disconnect.
+        </p>
+      </>
+    ),
+    caption: <>Specimen and grey sections at the axial and coronal planes. Conn.D is computed on the purified image.</>,
+  },
+  "tb-th": {
+    short: (
+      <>
+        <p>
+          The model independent local thickness of bone (Hildebrand &amp; Rüegsegger, 1997): at each point, the diameter of the largest sphere that
+          contains it and fits inside bone.
+        </p>
+        <Eq>
+          τ(<b>p</b>) = 2 · max {"{"} <i>r</i> : <b>p</b> ∈ <i>S</i>(<b>x</b>, <i>r</i>) ⊆ Ω {"}"}
+        </Eq>
+        <p>
+          Tb.Th is the mean of τ over bone, computed from the Euclidean distance transform with only the maximal spheres on the medial axis kept.
+          Values near the voxel size are poorly resolved.
+        </p>
+      </>
+    ),
+    caption: <>Colour bar and histogram, specimen coloured by local thickness, section at the analysis plane, and a schematic strut with its maximal inscribed spheres.</>,
+  },
+  "tb-sp": {
+    short: (
+      <>
+        <p>The same sphere fitting applied to marrow: the diameter of the largest sphere that contains each point and fits inside marrow.</p>
+        <Eq>
+          τ<sub>m</sub>(<b>p</b>) = 2 · max {"{"} <i>r</i> : <b>p</b> ∈ <i>S</i>(<b>x</b>, <i>r</i>) ⊆ Ω<sub>m</sub> {"}"}
+        </Eq>
+        <p>
+          Tb.Sp is not the inverse of Tb.Th; it also responds to trabecular number and arrangement. Pores at the cube boundary are truncated, so large
+          separations are underestimated.
+        </p>
+      </>
+    ),
+    caption: <>As for Tb.Th, measured on marrow. Right: the largest sphere that fits each pore.</>,
+  },
+  da: {
+    short: (
+      <>
+        <p>DA measures preferred orientation from the eigenvalues of a fabric tensor. It is 0 for an isotropic structure and approaches 1 as trabeculae align.</p>
+        <Eq>DA = 1 − λ<sub>min</sub> / λ<sub>max</sub></Eq>
+        <p>
+          The fabric here is the gradient structure tensor, which uses every voxel in one pass. The two classical estimates sit below it. MIL counts
+          boundary crossings along test lines, so it only sees the interface (Harrigan &amp; Mann, 1984). SVD averages cubed ray lengths from marrow
+          points, so a few large pores dominate and it needs many points to be stable.
+        </p>
+      </>
+    ),
+    caption: (
+      <>
+        Top: frontal views of an isotropic and an anisotropic specimen; dashed lines follow the local strut direction from the structure tensor. Bottom:
+        MIL test lines and SVD stars on the analysis section of the anisotropic specimen, with their roses.
+      </>
+    ),
+  },
+  ef: {
+    short: (
+      <>
+        <p>EF classifies local shape as plate or rod from the semi axes <i>a</i> ≤ <i>b</i> ≤ <i>c</i> of ellipsoids fitted inside the structure (Doube, 2015).</p>
+        <Eq>
+          EF = <i>a</i>/<i>b</i> − <i>b</i>/<i>c</i>
+        </Eq>
+        <p>
+          Plates give EF → −1 and rods EF → +1. Here local shape comes from structure tensor ellipsoids, coloured by their alignment with the director
+          N̂; S is the nematic order parameter of the field.
+        </p>
+      </>
+    ),
+    caption: <>Solid specimen, and the same specimen nearly transparent with its fabric ellipsoids, director N̂ and cone of mean deviation β̄.</>,
+  },
+};
+for (const [k, v] of Object.entries(PAPER)) Object.assign(METRICS[k], v);
 
 /* ---------------------------- references ---------------------------- */
 

@@ -8,6 +8,9 @@
      rods     rod network along the cell edges (osteoporotic look)
      mixed    plates in some regions, rods in others (human cancellous)
      grf      the original two level cut Gaussian random field (wavy)
+     braced   a fixed vertical scaffold with a set fraction of transverse
+              links kept (rung retention), so the transverse fraction
+              varies continuously over nested link sets
    Every model returns a non-negative field q with bone = { q < beta };
    beta is chosen from the sorted field, so BV/TV is exact. The field is
    periodic, lightly smoothed (no creases or floating specks), and the
@@ -17,12 +20,13 @@
 import { makeField, qField } from "./engine";
 import { blur3, mulberry32, type Dims } from "./volume";
 
-export type ModelId = "graph" | "columns" | "rungs" | "hybrid" | "tworod" | "mixed" | "plates" | "rods" | "grf";
+export type ModelId = "graph" | "columns" | "rungs" | "hybrid" | "braced" | "tworod" | "mixed" | "plates" | "rods" | "grf";
 export const MODELS: { id: ModelId; name: string; note: string; bv: number }[] = [
   { id: "tworod", name: "Two-surface rods", note: "smooth struts where two random surfaces intersect", bv: 0.14 },
   { id: "rungs", name: "Rungs and columns", note: "dense horizontal cross-braces tying thinner vertical columns together", bv: 0.14 },
   { id: "hybrid", name: "Hybrid", note: "columns with rungs and oblique struts at irregular junctions", bv: 0.17 },
   { id: "columns", name: "Columns and rungs", note: "vertical columns with thinner horizontal cross-braces; vertebral bone", bv: 0.14 },
+  { id: "braced", name: "Braced columns", note: "a fixed vertical scaffold keeping a set fraction of its transverse rungs", bv: 0.14 },
   { id: "graph", name: "Strut graph", note: "random nodes joined to their neighbours by tapered rods", bv: 0.14 },
   { id: "mixed", name: "Plate and rod", note: "Voronoi plates breaking into rods", bv: 0.17 },
   { id: "rods", name: "Voronoi rods", note: "rods along Voronoi cell edges", bv: 0.13 },
@@ -54,11 +58,13 @@ const smooth = (e0: number, e1: number, x: number) => {
 };
 
 /** Precomputed parts of a model; `combine(a)` applies the perforation without rebuilding. */
-export type ModelBase = { combine: (a: number) => Float32Array };
+/** Link census of a strut model: counts and strut volume (length x mean radius squared) by orientation class. */
+export type LinkStats = { vertical: number; oblique: number; transverse: number; volV: number; volO: number; volT: number };
+export type ModelBase = { combine: (a: number) => Float32Array; links?: LinkStats };
 
-export function buildModel(id: ModelId, seed: number, d: Dims, k: number): ModelBase {
+export function buildModel(id: ModelId, seed: number, d: Dims, k: number, opts: { rung?: number } = {}): ModelBase {
   const N = d[0] * d[1] * d[2];
-  if (id === "graph" || id === "columns" || id === "rungs" || id === "hybrid") return strutGraph(id, seed, d, k);
+  if (id === "graph" || id === "columns" || id === "rungs" || id === "hybrid" || id === "braced") return strutGraph(id, seed, d, k, opts.rung ?? 0.5);
   if (id === "tworod") {
     const f1 = makeField(seed, d, [4.6 * k, 4.6, 4.6]);
     const f2 = makeField(seed * 13 + 5, d, [4.6 * k, 4.6, 4.6]);
@@ -216,9 +222,10 @@ export function despeckle(q: Float32Array & { signed?: Float32Array }, d: Dims, 
  * distance to the nearest rod axis divided by that rod's radius, so one threshold scales every
  * rod together. `columns` keeps near-vertical rods thick and makes horizontal ones thin rungs.
  */
-function strutGraph(mode: "graph" | "columns" | "rungs" | "hybrid", seed: number, d: Dims, k: number): ModelBase {
+function strutGraph(mode: "graph" | "columns" | "rungs" | "hybrid" | "braced", seed: number, d: Dims, k: number, rung = 0.5): ModelBase {
   const hybrid = mode === "hybrid";
-  const columns = mode === "columns" || hybrid;
+  const braced = mode === "braced";
+  const columns = mode === "columns" || hybrid || braced;
   const rungs = mode === "rungs";
   const [nx, ny, nz] = d;
   const N = nx * ny * nz;
@@ -235,8 +242,23 @@ function strutGraph(mode: "graph" | "columns" | "rungs" | "hybrid", seed: number
           nodes.push([((x + o + j * r()) / n[0]) * nx, ((y + o + j * r()) / n[1]) * ny, ((z + o + j * r()) / n[2]) * nz]);
         }
   const wrap = (v: number, L: number) => (v > L / 2 ? v - L : v < -L / 2 ? v + L : v);
+  // orientation classes as in the pruning rules: vertical > 0.75, transverse < 0.4, oblique between
+  function tally(vert: number, len: number, rad: number) {
+    const vol = len * rad * rad;
+    if (vert > 0.75) {
+      links.vertical++;
+      links.volV += vol;
+    } else if (vert < 0.4) {
+      links.transverse++;
+      links.volT += vol;
+    } else {
+      links.oblique++;
+      links.volO += vol;
+    }
+  }
   type Seg = { a: number[]; b: number[]; r0: number; r1: number };
   const segs: Seg[] = [];
+  const links: LinkStats = { vertical: 0, oblique: 0, transverse: 0, volV: 0, volO: 0, volT: 0 };
   const reach = sp * (hybrid ? 1.55 : 1.5);
   for (let i = 0; i < nodes.length; i++)
     for (let j = i + 1; j < nodes.length; j++) {
@@ -246,6 +268,17 @@ function strutGraph(mode: "graph" | "columns" | "rungs" | "hybrid", seed: number
       const L = Math.hypot(dx / k, dy, dz);
       if (L > reach) continue;
       const vert = Math.abs(dy) / Math.hypot(dx, dy, dz); // 1 = along the y (vertical) axis
+      if (braced) {
+        // every link draws the same three numbers whatever the retention, so raising it only adds rungs to the same scaffold
+        const u = r();
+        const j0 = 0.9 + 0.2 * r();
+        const j1 = 0.65 + 0.15 * r();
+        if (vert > 0.75 ? u > 0.85 : u > rung) continue;
+        const base = vert > 0.75 ? 1.15 : 0.7;
+        segs.push({ a: nodes[i], b: [nodes[i][0] + dx, nodes[i][1] + dy, nodes[i][2] + dz], r0: base * j0, r1: base * j1 });
+        tally(vert, Math.hypot(dx, dy, dz), base * (j0 + j1) / 2);
+        continue;
+      }
       if (hybrid) {
         // columns as in the columns model; keep most horizontal rungs too, drop most diagonals
         if (vert > 0.75 ? r() > 0.85 : vert < 0.35 ? r() > 0.55 : r() > 0.55) continue; // a mix of columns, obliques and rungs
@@ -270,7 +303,10 @@ function strutGraph(mode: "graph" | "columns" | "rungs" | "hybrid", seed: number
               ? 1.15
               : 0.55
             : 0.75 + 0.5 * r();
-      segs.push({ a: nodes[i], b: [nodes[i][0] + dx, nodes[i][1] + dy, nodes[i][2] + dz], r0: base * (0.9 + 0.2 * r()), r1: base * (0.65 + 0.15 * r()) });
+      const r0 = base * (0.9 + 0.2 * r());
+      const r1 = base * (0.65 + 0.15 * r());
+      segs.push({ a: nodes[i], b: [nodes[i][0] + dx, nodes[i][1] + dy, nodes[i][2] + dz], r0, r1 });
+      tally(vert, Math.hypot(dx, dy, dz), (r0 + r1) / 2);
     }
   const q = new Float32Array(N).fill(8);
   for (const sg of segs) {
@@ -311,6 +347,7 @@ function strutGraph(mode: "graph" | "columns" | "rungs" | "hybrid", seed: number
   const rough = standardise(blur3(noise(N, seed * 7 + 1), d, [1.6, 1.6, 1.6]));
   const g = standardise(blur3(noise(N, seed * 29 + 3), d, [6, 6, 6]));
   return {
+    links,
     combine: (a) => {
       const out = new Float32Array(N);
       for (let i = 0; i < N; i++) out[i] = Math.max(0, q[i] * (1 + 0.06 * a * g[i]) + 0.025 * rough[i]);
